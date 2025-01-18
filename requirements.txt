@@ -1,0 +1,3 @@
+pandas
+nasdaq-data-link
+xlwings

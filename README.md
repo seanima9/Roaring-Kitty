@@ -1,0 +1,1 @@
+Scripts for getting Nasdaq data link fundamentals data into excel
