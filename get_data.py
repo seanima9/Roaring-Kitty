@@ -1,5 +1,6 @@
 import sys
 import os
+import numpy as np
 import pandas as pd
 import nasdaqdatalink as ndl
 import xlwings as xw
@@ -101,6 +102,20 @@ METRIC_GROUPS = [
     }
 ]
 
+# Color constants for Excel conditional formatting
+DARK_GREEN = (51, 153, 51)      # Strongest positive indication  
+MED_GREEN = (102, 187, 102)     # Medium positive
+LIGHT_GREEN = (144, 213, 144)   # Mild positive
+
+DARK_RED = (204, 51, 51)        # Serious concern
+MED_RED = (230, 102, 102)       # Moderate concern
+LIGHT_RED = (247, 153, 153)     # Mild concern
+
+YELLOW = (255, 217, 102)        # Used for borderline cases
+
+
+########################################### Get Data ###########################################
+
 
 def grab_data(ticker):
     """
@@ -196,6 +211,168 @@ def grab_data(ticker):
     return metrics_df.round(2)
 
 
+########################################### Excel Formatting ###########################################
+
+
+def calculate_percentiles(values):
+    """Calculate percentiles for a numpy array of values"""
+    return {
+        10: np.percentile(values, 10),
+        25: np.percentile(values, 25),
+        50: np.percentile(values, 50),
+        75: np.percentile(values, 75),
+        90: np.percentile(values, 90)
+    }
+
+def get_metric_group(metric_name):
+    """Helper function to identify which group a metric belongs to"""
+    for group in METRIC_GROUPS:
+        if metric_name in group['metrics']:
+            return group['name']
+    raise ValueError(f"Metric '{metric_name}' not found in any group")
+
+def format_growth_metrics(range_obj, values):
+    """Color by percentiles - higher is better"""
+    percentiles = calculate_percentiles(values)
+    for cell, value in zip(range_obj, values):
+        if pd.notna(value):  # Only format if value exists
+            if value >= percentiles[75]:
+                cell.color = DARK_GREEN
+            elif value >= percentiles[50]:
+                cell.color = MED_GREEN
+            elif value >= percentiles[25]:
+                cell.color = LIGHT_GREEN
+            elif value >= percentiles[10]:
+                cell.color = LIGHT_RED
+            else:
+                cell.color = DARK_RED
+
+def format_margin_metrics(range_obj, values):
+    """Format margin metrics - higher is better"""
+    percentiles = calculate_percentiles(values)
+    for cell, value in zip(range_obj, values):
+        if pd.notna(value):
+            if value >= percentiles[75]:
+                cell.color = DARK_GREEN
+            elif value >= percentiles[50]:
+                cell.color = MED_GREEN
+            elif value >= percentiles[25]:
+                cell.color = LIGHT_GREEN
+            elif value >= percentiles[10]:
+                cell.color = LIGHT_RED
+            else:
+                cell.color = DARK_RED
+
+def format_cash_flow_metrics(range_obj, values):
+    """Format cash flow metrics - higher is better"""
+    percentiles = calculate_percentiles(values)
+    for cell, value in zip(range_obj, values):
+        if pd.notna(value):
+            if value >= percentiles[75]:
+                cell.color = DARK_GREEN
+            elif value >= percentiles[50]:
+                cell.color = MED_GREEN
+            elif value >= percentiles[25]:
+                cell.color = LIGHT_GREEN
+            elif value >= percentiles[10]:
+                cell.color = LIGHT_RED
+            else:
+                cell.color = DARK_RED
+
+def format_ratio_metrics(range_obj, values, metric_name):
+    """Format ratio metrics - uses absolute thresholds for some metrics"""
+    for cell, value in zip(range_obj, values):
+        if pd.notna(value):
+            if metric_name in ['Current Ratio', 'Quick Ratio']:
+                if value >= 1.5:
+                    cell.color = DARK_GREEN
+                elif value >= 1.2:
+                    cell.color = MED_GREEN
+                elif value >= 1.0:
+                    cell.color = YELLOW
+                elif value >= 0.8:
+                    cell.color = LIGHT_RED
+                else:
+                    cell.color = DARK_RED
+            elif metric_name == 'Int Coverage':
+                if value >= 4:
+                    cell.color = DARK_GREEN
+                elif value >= 3:
+                    cell.color = MED_GREEN
+                elif value >= 2:
+                    cell.color = YELLOW
+                elif value >= 1:
+                    cell.color = LIGHT_RED
+                else:
+                    cell.color = DARK_RED
+            elif metric_name in ['D/E', 'Debt to EBITDA']:
+                # Lower is better for these metrics
+                percentiles = calculate_percentiles(values)
+                if value <= percentiles[25]:
+                    cell.color = DARK_GREEN
+                elif value <= percentiles[50]:
+                    cell.color = MED_GREEN
+                elif value <= percentiles[75]:
+                    cell.color = LIGHT_GREEN
+                elif value <= percentiles[90]:
+                    cell.color = LIGHT_RED
+                else:
+                    cell.color = DARK_RED
+
+def format_return_metrics(range_obj, values):
+    """Format return metrics - higher is better"""
+    percentiles = calculate_percentiles(values)
+    for cell, value in zip(range_obj, values):
+        if pd.notna(value):
+            if value >= percentiles[75]:
+                cell.color = DARK_GREEN
+            elif value >= percentiles[50]:
+                cell.color = MED_GREEN
+            elif value >= percentiles[25]:
+                cell.color = LIGHT_GREEN
+            elif value >= percentiles[10]:
+                cell.color = LIGHT_RED
+            else:
+                cell.color = DARK_RED
+
+def apply_conditional_formatting(sheet, metrics_df, start_row, start_col):
+    """
+    Apply conditional formatting to financial metrics.
+    Expects metrics_df to be in the same orientation as the Excel sheet
+    (metrics as rows, years as columns)
+    """
+    # Work with transposed data to match Excel layout
+    transposed_metrics = metrics_df.transpose()
+    
+    for row_idx, metric_name in enumerate(transposed_metrics.index):
+        metric_group = get_metric_group(metric_name)
+        
+        if metric_group == 'Valuation Metrics':
+            continue
+            
+        row_values = transposed_metrics.loc[metric_name].values
+        
+        # Calculate the range for this row's data cells
+        current_row = start_row + 1 + row_idx  # +1 to skip header row
+        data_range = sheet.range((current_row, start_col + 2),  # +2 to skip category and metric name columns
+                               (current_row, start_col + 2 + len(row_values) - 1))
+        
+        # Apply formatting based on metric group
+        if metric_group == 'Income Statement' and '%' in metric_name:
+            format_growth_metrics(data_range, row_values)
+        elif metric_group == 'Cash Flow' and '%' in metric_name:
+            format_cash_flow_metrics(data_range, row_values)
+        elif metric_group == 'Margins':
+            format_margin_metrics(data_range, row_values)
+        elif metric_group == 'Ratios':
+            format_ratio_metrics(data_range, row_values, metric_name)
+        elif metric_group == 'Returns':
+            format_return_metrics(data_range, row_values)
+
+
+########################################### Write to Excel ###########################################
+
+
 def write_to_excel(sheet, metrics, start_row=3, start_col=12):
     years = sorted([idx for idx in metrics.index if idx != 'LTM'])
     if len(years) > 20:
@@ -270,10 +447,12 @@ def write_to_excel(sheet, metrics, start_row=3, start_col=12):
     for col in range(start_col + 2, start_col + len(years) + 2):
         sheet.api.Columns(col).AutoFit()
 
+    sheet = apply_conditional_formatting(sheet, metrics, start_row, start_col)
+
     return sheet
 
 
-def main():
+def app():
     spreadsheet_path = sys.argv[1]
     ticker = sys.argv[2]
     metrics = grab_data(ticker)
@@ -284,4 +463,4 @@ def main():
     wb.save(spreadsheet_path)
 
 
-main()
+app()
