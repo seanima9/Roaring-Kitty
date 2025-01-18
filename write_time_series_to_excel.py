@@ -6,118 +6,35 @@ import nasdaqdatalink as ndl
 import xlwings as xw
 import json
 
-config_path = os.path.join(os.path.dirname(__file__), 'config.json')
-with open(config_path) as f:
+BASE_DIR = os.path.dirname(__file__)
+API_KEY_PATH = os.path.join(BASE_DIR, 'api_key.json')
+CONFIG_PATH = os.path.join(BASE_DIR, 'config.json')
+
+with open(API_KEY_PATH) as f:
     config = json.load(f)
-    api_key = config['api_key']
+    API_KEY = config['api_key']
 
-ndl.ApiConfig.api_key = api_key
+with open(CONFIG_PATH, 'r') as f:
+    config = json.load(f)
 
-METRIC_GROUPS = [
-    {
-        'name': 'Valuation Metrics',
-        'metrics': {
-            'TEV': 'Total Enterprise Value in millions',
-            'Market Cap': 'Market Capitalization in millions',
-            'TEV / EBITDA': 'Enterprise Value to EBITDA ratio - measures company value relative to earnings',
-            'TEV / Revenue': 'Enterprise Value to Revenue ratio - measures company value relative to sales',
-            'TEV / FCF': 'Enterprise Value to Free Cash Flow ratio - measures company value relative to cash flow',
-            'P/E': 'Price to Earnings ratio - measures stock price relative to earnings per share',
-            'P/B': 'Price to Book ratio - measures stock price relative to book value per share'
-        }
-    },
-    {
-        'name': 'Income Statement',
-        'metrics': {
-            'Revenue': 'Total sales in millions',
-            'Revenue %': 'Year-over-year revenue growth',
-            'Gross Profit': 'Revenue minus cost of goods sold in millions',
-            'GP %': 'Year-over-year gross profit growth',
-            'Net Income': 'Total earnings in millions',
-            'Net Income %': 'Year-over-year net income growth',
-            'Operating Income': 'Profit from core business operations in millions',
-            'Total Operating Expense': 'All operating costs excluding non-operating items in millions',
-            'EBITDA': 'Earnings Before Interest, Taxes, Depreciation & Amortization in millions',
-            'EBITDA %': 'Year-over-year EBITDA growth',
-            'EPS': 'Earnings Per Share'
-        }
-    },
-    {
-        'name': 'Cash Flow',
-        'metrics': {
-            'CFO': 'Cash Flow from Operations in millions',
-            'CFO %': 'Year-over-year operating cash flow growth',
-            'FCF': 'Free Cash Flow in millions',
-            'FCF %': 'Year-over-year free cash flow growth'
-        }
-    },
-    {
-        'name': 'Balance Sheet',
-        'metrics': {
-            'Equity': 'Total Shareholder Equity in millions',
-            'Debt': 'Total Debt in millions',
-            'Total Assets': 'Total Assets in millions',
-            'Total Liabilities': 'Total Liabilities in millions',
-            'Net Working Capital': 'Current Assets minus Current Liabilities in millions',
-            'Cash Ratio': 'Cash and Cash Equivalents divided by Current Liabilities',
-            'Tangible Book Value': 'Total Assets minus Intangibles and Liabilities in millions',
-            'TBV Per Share': 'Tangible Book Value divided by Shares Outstanding',
-            'Leverage Ratio': 'Total Assets divided by Total Equity',
-            'Interest-Bearing Debt': 'Short-Term and Long-Term Debt in millions',
-            'Debt to Capital': 'Total Debt divided by Total Debt plus Equity',
-            'Cash to Debt': 'Cash and Cash Equivalents divided by Total Debt',
-            'Net Debt to Total Assets': 'Net Debt divided by Total Assets',
-            'Working Capital Turnover': 'Revenue divided by Net Working Capital'
-        }
-    },
-    {
-        'name': 'Margins',
-        'metrics': {
-            'GP Margin': 'Gross Profit as a percentage of Revenue',
-            'EBITDA Margin': 'EBITDA as a percentage of Revenue',
-            'Net Margin': 'Net Income as a percentage of Revenue',
-            'Operating Margin': 'Operating Income as a percentage of Revenue',
-            'Free Cash Flow Margin': 'Free Cash Flow as a percentage of Revenue'
-        }
-    },
-    {
-        'name': 'Ratios',
-        'metrics': {
-            'Current Ratio': 'Current Assets divided by Current Liabilities - measures short-term liquidity',
-            'Quick Ratio': 'Current Assets minus Inventory divided by Current Liabilities - measures immediate liquidity',
-            'Payout Ratio': 'Dividends divided by Net Income - measures dividend sustainability',
-            'D/E': 'Debt to Equity ratio - measures financial leverage',
-            'Debt to EBITDA': 'Total Debt divided by EBITDA - measures debt leverage relative to earnings',
-            'Asset Turnover': 'Revenue divided by Average Total Assets - measures asset efficiency',
-            'Int Coverage': 'EBIT divided by Interest Expense - measures ability to pay interest'
-        }
-    },
-    {
-        'name': 'Returns',
-        'metrics': {
-            'ROA': 'Return on Assets - measures profitability relative to total assets',
-            'ROE': 'Return on Equity - measures profitability relative to shareholder equity',
-            'ROIC': 'Return on Invested Capital - measures profitability relative to invested capital'
-        }
-    }
-]
+METRIC_GROUPS = config['metric_groups']
+COLORS = config['colors']
 
-# Color constants for Excel conditional formatting
-DARK_GREEN = (51, 153, 51)      # Strongest positive indication  
-MED_GREEN = (102, 187, 102)     # Medium positive
-LIGHT_GREEN = (144, 213, 144)   # Mild positive
+DARK_GREEN = COLORS['DARK_GREEN']
+MED_GREEN = COLORS['MED_GREEN']
+LIGHT_GREEN = COLORS['LIGHT_GREEN']
+DARK_RED = COLORS['DARK_RED']
+MED_RED = COLORS['MED_RED']
+LIGHT_RED = COLORS['LIGHT_RED']
+YELLOW = COLORS['YELLOW']
 
-DARK_RED = (204, 51, 51)        # Serious concern
-MED_RED = (230, 102, 102)       # Moderate concern
-LIGHT_RED = (247, 153, 153)     # Mild concern
-
-YELLOW = (255, 217, 102)        # Used for borderline cases
+ndl.ApiConfig.api_key = API_KEY
 
 
 ########################################### Get Data ###########################################
 
 
-def grab_data(ticker):
+def grab_sf1_time_series_data(ticker):
     """
     Grab fundamental data for a given ticker from the Sharadar SF1 dataset.
     """
@@ -160,6 +77,7 @@ def grab_data(ticker):
     metrics['EBITDA'] = data['ebitda'] / 1_000_000
     metrics['EBITDA %'] = (data['ebitda'] / 1_000_000).pct_change()
     metrics['EPS'] = data['eps']
+    metrics['Interest Expense'] = data['intexp'] / 1_000_000
 
     # Cash Flow
     metrics['CFO'] = data['ncfo'] / 1_000_000
@@ -206,6 +124,7 @@ def grab_data(ticker):
 
     # Create DataFrame with years as index
     metrics_df = pd.DataFrame(metrics)
+    metrics_df = metrics_df.replace([np.inf, -np.inf], np.nan)
     metrics_df.index = data['year']
     
     return metrics_df.round(2)
@@ -215,27 +134,30 @@ def grab_data(ticker):
 
 
 def calculate_percentiles(values):
-    """Calculate percentiles for a numpy array of values"""
     return {
-        10: np.percentile(values, 10),
-        25: np.percentile(values, 25),
-        50: np.percentile(values, 50),
-        75: np.percentile(values, 75),
-        90: np.percentile(values, 90)
+        10: np.nanpercentile(values, 10),
+        25: np.nanpercentile(values, 25),
+        50: np.nanpercentile(values, 50),
+        75: np.nanpercentile(values, 75),
+        90: np.nanpercentile(values, 90)
     }
 
+
 def get_metric_group(metric_name):
-    """Helper function to identify which group a metric belongs to"""
     for group in METRIC_GROUPS:
         if metric_name in group['metrics']:
             return group['name']
     raise ValueError(f"Metric '{metric_name}' not found in any group")
 
+
 def format_growth_metrics(range_obj, values):
-    """Color by percentiles - higher is better"""
     percentiles = calculate_percentiles(values)
+    
+    if percentiles[50] is None:
+        return
+        
     for cell, value in zip(range_obj, values):
-        if pd.notna(value):  # Only format if value exists
+        if pd.notna(value) and not np.isinf(value):
             if value >= percentiles[75]:
                 cell.color = DARK_GREEN
             elif value >= percentiles[50]:
@@ -246,12 +168,18 @@ def format_growth_metrics(range_obj, values):
                 cell.color = LIGHT_RED
             else:
                 cell.color = DARK_RED
+        else:
+            cell.color = None
+
 
 def format_margin_metrics(range_obj, values):
-    """Format margin metrics - higher is better"""
     percentiles = calculate_percentiles(values)
+    
+    if percentiles[50] is None:
+        return
+        
     for cell, value in zip(range_obj, values):
-        if pd.notna(value):
+        if pd.notna(value) and not np.isinf(value):
             if value >= percentiles[75]:
                 cell.color = DARK_GREEN
             elif value >= percentiles[50]:
@@ -262,12 +190,18 @@ def format_margin_metrics(range_obj, values):
                 cell.color = LIGHT_RED
             else:
                 cell.color = DARK_RED
+        else:
+            cell.color = None
+
 
 def format_cash_flow_metrics(range_obj, values):
-    """Format cash flow metrics - higher is better"""
     percentiles = calculate_percentiles(values)
+    
+    if percentiles[50] is None:
+        return
+        
     for cell, value in zip(range_obj, values):
-        if pd.notna(value):
+        if pd.notna(value) and not np.isinf(value):
             if value >= percentiles[75]:
                 cell.color = DARK_GREEN
             elif value >= percentiles[50]:
@@ -278,11 +212,13 @@ def format_cash_flow_metrics(range_obj, values):
                 cell.color = LIGHT_RED
             else:
                 cell.color = DARK_RED
+        else:
+            cell.color = None
+
 
 def format_ratio_metrics(range_obj, values, metric_name):
-    """Format ratio metrics - uses absolute thresholds for some metrics"""
     for cell, value in zip(range_obj, values):
-        if pd.notna(value):
+        if pd.notna(value) and not np.isinf(value):
             if metric_name in ['Current Ratio', 'Quick Ratio']:
                 if value >= 1.5:
                     cell.color = DARK_GREEN
@@ -294,36 +230,33 @@ def format_ratio_metrics(range_obj, values, metric_name):
                     cell.color = LIGHT_RED
                 else:
                     cell.color = DARK_RED
-            elif metric_name == 'Int Coverage':
-                if value >= 4:
-                    cell.color = DARK_GREEN
-                elif value >= 3:
-                    cell.color = MED_GREEN
-                elif value >= 2:
-                    cell.color = YELLOW
-                elif value >= 1:
-                    cell.color = LIGHT_RED
-                else:
-                    cell.color = DARK_RED
+
             elif metric_name in ['D/E', 'Debt to EBITDA']:
-                # Lower is better for these metrics
                 percentiles = calculate_percentiles(values)
-                if value <= percentiles[25]:
-                    cell.color = DARK_GREEN
-                elif value <= percentiles[50]:
-                    cell.color = MED_GREEN
-                elif value <= percentiles[75]:
-                    cell.color = LIGHT_GREEN
-                elif value <= percentiles[90]:
-                    cell.color = LIGHT_RED
-                else:
-                    cell.color = DARK_RED
+                if percentiles[50] is not None:
+                    if value <= percentiles[25]:
+                        cell.color = DARK_GREEN
+                    elif value <= percentiles[50]:
+                        cell.color = MED_GREEN
+                    elif value <= percentiles[75]:
+                        cell.color = LIGHT_GREEN
+                    elif value <= percentiles[90]:
+                        cell.color = LIGHT_RED
+                    else:
+                        cell.color = DARK_RED
+        else:
+            cell.color = None
+
 
 def format_return_metrics(range_obj, values):
-    """Format return metrics - higher is better"""
     percentiles = calculate_percentiles(values)
+    
+    # If no valid percentiles, skip formatting
+    if percentiles[50] is None:
+        return
+        
     for cell, value in zip(range_obj, values):
-        if pd.notna(value):
+        if pd.notna(value) and not np.isinf(value):
             if value >= percentiles[75]:
                 cell.color = DARK_GREEN
             elif value >= percentiles[50]:
@@ -334,13 +267,11 @@ def format_return_metrics(range_obj, values):
                 cell.color = LIGHT_RED
             else:
                 cell.color = DARK_RED
+        else:
+            cell.color = None
+
 
 def apply_conditional_formatting(sheet, metrics_df, start_row, start_col):
-    """
-    Apply conditional formatting to financial metrics.
-    Expects metrics_df to be in the same orientation as the Excel sheet
-    (metrics as rows, years as columns)
-    """
     # Work with transposed data to match Excel layout
     transposed_metrics = metrics_df.transpose()
     
@@ -452,10 +383,13 @@ def write_to_excel(sheet, metrics, start_row=3, start_col=12):
     return sheet
 
 
-def app():
+########################################### Main ###########################################
+
+
+def main():
     spreadsheet_path = sys.argv[1]
     ticker = sys.argv[2]
-    metrics = grab_data(ticker)
+    metrics = grab_sf1_time_series_data(ticker)
 
     wb = xw.books.active
     sheet = wb.sheets.active
@@ -463,4 +397,4 @@ def app():
     wb.save(spreadsheet_path)
 
 
-app()
+main()

@@ -1,0 +1,100 @@
+{
+  "metric_groups": [
+      {
+          "name": "Valuation Metrics",
+          "metrics": {
+              "TEV": "Total Enterprise Value in millions",
+              "Market Cap": "Market Capitalization in millions",
+              "TEV / EBITDA": "Enterprise Value to EBITDA ratio - measures company value relative to earnings",
+              "TEV / Revenue": "Enterprise Value to Revenue ratio - measures company value relative to sales",
+              "TEV / FCF": "Enterprise Value to Free Cash Flow ratio - measures company value relative to cash flow",
+              "P/E": "Price to Earnings ratio - measures stock price relative to earnings per share",
+              "P/B": "Price to Book ratio - measures stock price relative to book value per share"
+          }
+      },
+      {
+          "name": "Income Statement",
+          "metrics": {
+              "Revenue": "Total sales in millions",
+              "Revenue %": "Year-over-year revenue growth",
+              "Gross Profit": "Revenue minus cost of goods sold in millions",
+              "GP %": "Year-over-year gross profit growth",
+              "Net Income": "Total earnings in millions",
+              "Net Income %": "Year-over-year net income growth",
+              "Operating Income": "Profit from core business operations in millions",
+              "Total Operating Expense": "All operating costs excluding non-operating items in millions",
+              "EBITDA": "Earnings Before Interest, Taxes, Depreciation & Amortization in millions",
+              "EBITDA %": "Year-over-year EBITDA growth",
+              "EPS": "Earnings Per Share",
+              "Interest Expense": "Total interest paid in millions"
+          }
+      },
+      {
+          "name": "Cash Flow",
+          "metrics": {
+              "CFO": "Cash Flow from Operations in millions",
+              "CFO %": "Year-over-year operating cash flow growth",
+              "FCF": "Free Cash Flow in millions",
+              "FCF %": "Year-over-year free cash flow growth"
+          }
+      },
+      {
+          "name": "Balance Sheet",
+          "metrics": {
+              "Equity": "Total Shareholder Equity in millions",
+              "Debt": "Total Debt in millions",
+              "Total Assets": "Total Assets in millions",
+              "Total Liabilities": "Total Liabilities in millions",
+              "Net Working Capital": "Current Assets minus Current Liabilities in millions",
+              "Cash Ratio": "Cash and Cash Equivalents divided by Current Liabilities",
+              "Tangible Book Value": "Total Assets minus Intangibles and Liabilities in millions",
+              "TBV Per Share": "Tangible Book Value divided by Shares Outstanding",
+              "Leverage Ratio": "Total Assets divided by Total Equity",
+              "Interest-Bearing Debt": "Short-Term and Long-Term Debt in millions",
+              "Debt to Capital": "Total Debt divided by Total Debt plus Equity",
+              "Cash to Debt": "Cash and Cash Equivalents divided by Total Debt",
+              "Net Debt to Total Assets": "Net Debt divided by Total Assets",
+              "Working Capital Turnover": "Revenue divided by Net Working Capital"
+          }
+      },
+      {
+          "name": "Margins",
+          "metrics": {
+              "GP Margin": "Gross Profit as a percentage of Revenue",
+              "EBITDA Margin": "EBITDA as a percentage of Revenue",
+              "Net Margin": "Net Income as a percentage of Revenue",
+              "Operating Margin": "Operating Income as a percentage of Revenue",
+              "Free Cash Flow Margin": "Free Cash Flow as a percentage of Revenue"
+          }
+      },
+      {
+          "name": "Ratios",
+          "metrics": {
+              "Current Ratio": "Current Assets divided by Current Liabilities - measures short-term liquidity",
+              "Quick Ratio": "Current Assets minus Inventory divided by Current Liabilities - measures immediate liquidity",
+              "Payout Ratio": "Dividends divided by Net Income - measures dividend sustainability",
+              "D/E": "Debt to Equity ratio - measures financial leverage",
+              "Debt to EBITDA": "Total Debt divided by EBITDA - measures debt leverage relative to earnings",
+              "Asset Turnover": "Revenue divided by Average Total Assets - measures asset efficiency",
+              "Int Coverage": "EBIT divided by Interest Expense - measures ability to pay interest"
+          }
+      },
+      {
+          "name": "Returns",
+          "metrics": {
+              "ROA": "Return on Assets - measures profitability relative to total assets",
+              "ROE": "Return on Equity - measures profitability relative to shareholder equity",
+              "ROIC": "Return on Invested Capital - measures profitability relative to invested capital"
+          }
+      }
+  ],
+  "colors": {
+      "DARK_GREEN": [51, 153, 51],
+      "MED_GREEN": [102, 187, 102],
+      "LIGHT_GREEN": [144, 213, 144],
+      "DARK_RED": [204, 51, 51],
+      "MED_RED": [230, 102, 102],
+      "LIGHT_RED": [247, 153, 153],
+      "YELLOW": [255, 217, 102]
+  }
+}
