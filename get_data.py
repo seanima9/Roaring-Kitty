@@ -20,6 +20,7 @@ METRIC_GROUPS = [
             'Market Cap': 'Market Capitalization in millions',
             'TEV / EBITDA': 'Enterprise Value to EBITDA ratio - measures company value relative to earnings',
             'TEV / Revenue': 'Enterprise Value to Revenue ratio - measures company value relative to sales',
+            'TEV / FCF': 'Enterprise Value to Free Cash Flow ratio - measures company value relative to cash flow',
             'P/E': 'Price to Earnings ratio - measures stock price relative to earnings per share',
             'P/B': 'Price to Book ratio - measures stock price relative to book value per share'
         }
@@ -33,6 +34,8 @@ METRIC_GROUPS = [
             'GP %': 'Year-over-year gross profit growth',
             'Net Income': 'Total earnings in millions',
             'Net Income %': 'Year-over-year net income growth',
+            'Operating Income': 'Profit from core business operations in millions',
+            'Total Operating Expense': 'All operating costs excluding non-operating items in millions',
             'EBITDA': 'Earnings Before Interest, Taxes, Depreciation & Amortization in millions',
             'EBITDA %': 'Year-over-year EBITDA growth',
             'EPS': 'Earnings Per Share'
@@ -53,7 +56,17 @@ METRIC_GROUPS = [
             'Equity': 'Total Shareholder Equity in millions',
             'Debt': 'Total Debt in millions',
             'Total Assets': 'Total Assets in millions',
-            'Total Liabilities': 'Total Liabilities in millions'
+            'Total Liabilities': 'Total Liabilities in millions',
+            'Net Working Capital': 'Current Assets minus Current Liabilities in millions',
+            'Cash Ratio': 'Cash and Cash Equivalents divided by Current Liabilities',
+            'Tangible Book Value': 'Total Assets minus Intangibles and Liabilities in millions',
+            'TBV Per Share': 'Tangible Book Value divided by Shares Outstanding',
+            'Leverage Ratio': 'Total Assets divided by Total Equity',
+            'Interest-Bearing Debt': 'Short-Term and Long-Term Debt in millions',
+            'Debt to Capital': 'Total Debt divided by Total Debt plus Equity',
+            'Cash to Debt': 'Cash and Cash Equivalents divided by Total Debt',
+            'Net Debt to Total Assets': 'Net Debt divided by Total Assets',
+            'Working Capital Turnover': 'Revenue divided by Net Working Capital'
         }
     },
     {
@@ -61,7 +74,9 @@ METRIC_GROUPS = [
         'metrics': {
             'GP Margin': 'Gross Profit as a percentage of Revenue',
             'EBITDA Margin': 'EBITDA as a percentage of Revenue',
-            'Net Margin': 'Net Income as a percentage of Revenue'
+            'Net Margin': 'Net Income as a percentage of Revenue',
+            'Operating Margin': 'Operating Income as a percentage of Revenue',
+            'Free Cash Flow Margin': 'Free Cash Flow as a percentage of Revenue'
         }
     },
     {
@@ -71,6 +86,7 @@ METRIC_GROUPS = [
             'Quick Ratio': 'Current Assets minus Inventory divided by Current Liabilities - measures immediate liquidity',
             'Payout Ratio': 'Dividends divided by Net Income - measures dividend sustainability',
             'D/E': 'Debt to Equity ratio - measures financial leverage',
+            'Debt to EBITDA': 'Total Debt divided by EBITDA - measures debt leverage relative to earnings',
             'Asset Turnover': 'Revenue divided by Average Total Assets - measures asset efficiency',
             'Int Coverage': 'EBIT divided by Interest Expense - measures ability to pay interest'
         }
@@ -113,6 +129,7 @@ def grab_data(ticker):
     metrics['Market Cap'] = data['marketcap'] / 1_000_000
     metrics['TEV / EBITDA'] = data['ev'] / data['ebitda']
     metrics['TEV / Revenue'] = data['ev'] / data['revenue']
+    metrics['TEV / FCF'] = data['ev'] / data['fcf']
     metrics['P/E'] = data['pe']
     metrics['P/B'] = data['pb']
 
@@ -123,6 +140,8 @@ def grab_data(ticker):
     metrics['GP %'] = (data['gp'] / 1_000_000).pct_change()
     metrics['Net Income'] = data['netinc'] / 1_000_000
     metrics['Net Income %'] = (data['netinc'] / 1_000_000).pct_change()
+    metrics['Operating Income'] = data['opinc'] / 1_000_000
+    metrics['Total Operating Expense'] = data['opex'] / 1_000_000
     metrics['EBITDA'] = data['ebitda'] / 1_000_000
     metrics['EBITDA %'] = (data['ebitda'] / 1_000_000).pct_change()
     metrics['EPS'] = data['eps']
@@ -138,17 +157,30 @@ def grab_data(ticker):
     metrics['Debt'] = data['debt'] / 1_000_000
     metrics['Total Assets'] = data['assets'] / 1_000_000
     metrics['Total Liabilities'] = data['liabilities'] / 1_000_000
+    metrics['Net Working Capital'] = (data['assetsc'] - data['liabilitiesc']) / 1_000_000
+    metrics['Cash Ratio'] = data['cashneq'] / data['liabilitiesc']
+    metrics['Tangible Book Value'] = (data['assets'] - data['intangibles'] - data['liabilities']) / 1_000_000
+    metrics['TBV Per Share'] = metrics['Tangible Book Value'] / data['shareswa']
+    metrics['Leverage Ratio'] = data['assets'] / data['equity']
+    metrics['Interest-Bearing Debt'] = (data['debtc'] + data['debtnc']) / 1_000_000
+    metrics['Debt to Capital'] = data['debt'] / (data['debt'] + data['equity'])
+    metrics['Cash to Debt'] = data['cashneq'] / data['debt']
+    metrics['Net Debt to Total Assets'] = (data['debt'] - data['cashneq']) / data['assets']
+    metrics['Working Capital Turnover'] = data['revenue'] / (data['assetsc'] - data['liabilitiesc'])
 
     # Margins
     metrics['GP Margin'] = data['grossmargin']
     metrics['EBITDA Margin'] = data['ebitdamargin']
     metrics['Net Margin'] = data['netmargin']
+    metrics['Operating Margin'] = data['opinc'] / data['revenue']
+    metrics['Free Cash Flow Margin'] = data['fcf'] / data['revenue']
 
     # Ratios
     metrics['Current Ratio'] = data['currentratio']
     metrics['Quick Ratio'] = (data['assetsc'] - data['inventory']) / data['liabilitiesc']
     metrics['Payout Ratio'] = data['payoutratio']
     metrics['D/E'] = data['debt'] / data['equity']
+    metrics['Debt to EBITDA'] = data['debt'] / data['ebitda']
     metrics['Asset Turnover'] = data['assetturnover']
     metrics['Int Coverage'] = data['ebit'] / data['intexp']
 
