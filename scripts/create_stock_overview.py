@@ -6,6 +6,10 @@ import nasdaqdatalink as ndl
 import xlwings as xw
 import json
 
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+
+from src.formatting_helpers import get_metric_group, format_metrics
+
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 API_KEY_PATH = os.path.join(BASE_DIR, 'api_key.json')
 CONFIG_PATH = os.path.join(BASE_DIR, 'config.json')
@@ -31,13 +35,7 @@ YELLOW = COLORS['YELLOW']
 ndl.ApiConfig.api_key = API_KEY
 
 
-########################################### Get Data ###########################################
-
-
 def grab_sf1_time_series_data(ticker):
-    """
-    Grab fundamental data for a given ticker from the Sharadar SF1 dataset.
-    """
     metrics = {}
     data = ndl.get_table('SHARADAR/SF1', ticker=ticker, paginate=True)
 
@@ -56,149 +54,70 @@ def grab_sf1_time_series_data(ticker):
     data = data.sort_values('year').reset_index(drop=True)
     data = pd.concat([data, ltm])
 
-    # Valuation Metrics
     metrics['TEV'] = data['ev'] / 1_000_000
-    metrics['Market Cap'] = data['marketcap'] / 1_000_000
-    metrics['TEV / EBITDA'] = data['ev'] / data['ebitda']
-    metrics['TEV / Revenue'] = data['ev'] / data['revenue']
-    metrics['TEV / FCF'] = data['ev'] / data['fcf']
+    metrics['Mkt Cap'] = data['marketcap'] / 1_000_000
+    metrics['TEV/EBITDA'] = data['ev'] / data['ebitda']
+    metrics['TEV/Rev'] = data['ev'] / data['revenue']
+    metrics['TEV/FCF'] = data['ev'] / data['fcf']
     metrics['P/E'] = data['pe']
     metrics['P/B'] = data['pb']
 
-    # Income Statement
-    metrics['Revenue'] = data['revenue'] / 1_000_000
-    metrics['Revenue delta'] = (data['revenue'] / 1_000_000).diff()
-    metrics['Gross Profit'] = data['gp'] / 1_000_000
-    metrics['GP delta'] = (data['gp'] / 1_000_000).diff()
-    metrics['Net Income'] = data['netinc'] / 1_000_000
-    metrics['Net Income delta'] = (data['netinc'] / 1_000_000).diff()
-    metrics['Operating Income'] = data['opinc'] / 1_000_000
-    metrics['Total Operating Expense'] = data['opex'] / 1_000_000
+    metrics['Rev'] = data['revenue'] / 1_000_000
+    metrics['Rev \u0394'] = (data['revenue'] / 1_000_000).diff()
+    metrics['GP'] = data['gp'] / 1_000_000
+    metrics['GP \u0394'] = (data['gp'] / 1_000_000).diff()
+    metrics['Net Inc'] = data['netinc'] / 1_000_000
+    metrics['Net Inc \u0394'] = (data['netinc'] / 1_000_000).diff()
+    metrics['Op Inc'] = data['opinc'] / 1_000_000
+    metrics['Op Exp'] = data['opex'] / 1_000_000
     metrics['EBITDA'] = data['ebitda'] / 1_000_000
-    metrics['EBITDA delta'] = (data['ebitda'] / 1_000_000).diff()
+    metrics['EBITDA \u0394'] = (data['ebitda'] / 1_000_000).diff()
     metrics['EPS'] = data['eps']
-    metrics['Interest Expense'] = data['intexp'] / 1_000_000
+    metrics['Int Exp'] = data['intexp'] / 1_000_000
 
-    # Cash Flow
     metrics['CFO'] = data['ncfo'] / 1_000_000
-    metrics['CFO delta'] = (data['ncfo'] / 1_000_000).diff()
+    metrics['CFO \u0394'] = (data['ncfo'] / 1_000_000).diff()
     metrics['FCF'] = data['fcf'] / 1_000_000
-    metrics['FCF delta'] = (data['fcf'] / 1_000_000).diff()
+    metrics['FCF \u0394'] = (data['fcf'] / 1_000_000).diff()
 
-    # Balance Sheet
     metrics['Equity'] = data['equity'] / 1_000_000
     metrics['Debt'] = data['debt'] / 1_000_000
-    metrics['Total Assets'] = data['assets'] / 1_000_000
-    metrics['Total Liabilities'] = data['liabilities'] / 1_000_000
-    metrics['Net Working Capital'] = (data['assetsc'] - data['liabilitiesc']) / 1_000_000
+    metrics['Assets'] = data['assets'] / 1_000_000
+    metrics['Liab'] = data['liabilities'] / 1_000_000
+    metrics['NWC'] = (data['assetsc'] - data['liabilitiesc']) / 1_000_000
     metrics['Cash Ratio'] = data['cashneq'] / data['liabilitiesc']
-    metrics['Tangible Book Value'] = (data['assets'] - data['intangibles'] - data['liabilities']) / 1_000_000
-    metrics['Leverage Ratio'] = data['assets'] / data['equity']
-    metrics['Interest-Bearing Debt'] = (data['debtc'] + data['debtnc']) / 1_000_000
-    metrics['Debt to Capital'] = data['debt'] / (data['debt'] + data['equity'])
-    metrics['Cash to Debt'] = data['cashneq'] / data['debt']
-    metrics['Net Debt to Total Assets'] = (data['debt'] - data['cashneq']) / data['assets']
-    metrics['Working Capital Turnover'] = data['revenue'] / (data['assetsc'] - data['liabilitiesc'])
+    metrics['TBV'] = (data['assets'] - data['intangibles'] - data['liabilities']) / 1_000_000
+    metrics['Lev Ratio'] = data['assets'] / data['equity']
+    metrics['Int-Bearing Debt'] = (data['debtc'] + data['debtnc']) / 1_000_000
+    metrics['Debt/Cap'] = data['debt'] / (data['debt'] + data['equity'])
+    metrics['Cash/Debt'] = data['cashneq'] / data['debt']
+    metrics['NetDebt/Assets'] = (data['debt'] - data['cashneq']) / data['assets']
+    metrics['WC Turn'] = data['revenue'] / (data['assetsc'] - data['liabilitiesc'])
 
-    # Margins
-    metrics['GP Margin'] = data['grossmargin']
-    metrics['EBITDA Margin'] = data['ebitdamargin']
-    metrics['Net Margin'] = data['netmargin']
-    metrics['Operating Margin'] = data['opinc'] / data['revenue']
-    metrics['Free Cash Flow Margin'] = data['fcf'] / data['revenue']
+    metrics['GP Marg'] = data['grossmargin']
+    metrics['EBITDA Marg'] = data['ebitdamargin']
+    metrics['Net Marg'] = data['netmargin']
+    metrics['Op Marg'] = data['opinc'] / data['revenue']
+    metrics['FCF Marg'] = data['fcf'] / data['revenue']
 
-    # Ratios
-    metrics['Current Ratio'] = data['currentratio']
+    metrics['Curr Ratio'] = data['currentratio']
     metrics['Quick Ratio'] = (data['assetsc'] - data['inventory']) / data['liabilitiesc']
     metrics['Payout Ratio'] = data['payoutratio']
     metrics['D/E'] = data['debt'] / data['equity']
-    metrics['Debt to EBITDA'] = data['debt'] / data['ebitda']
-    metrics['Asset Turnover'] = data['assetturnover']
-    metrics['Int Coverage'] = data['ebit'] / data['intexp']
+    metrics['Debt/EBITDA'] = data['debt'] / data['ebitda']
+    metrics['Asset Turn'] = data['assetturnover']
+    metrics['Int Cov'] = data['ebit'] / data['intexp']
 
-    # Return Metrics
     metrics['ROA'] = data['roa']
     metrics['ROE'] = data['roe']
     metrics['ROIC'] = data['roic']
 
-    # Create DataFrame with years as index
     metrics_df = pd.DataFrame(metrics)
     metrics_df = metrics_df.replace([np.inf, -np.inf], np.nan)
     metrics_df.index = data['year']
     
     return metrics_df.round(2)
 
-
-########################################### Excel Formatting ###########################################
-
-
-def calculate_percentiles(values):
-    return {
-        6: np.nanpercentile(values, 6),
-        12: np.nanpercentile(values, 12),
-        25: np.nanpercentile(values, 25),
-        75: np.nanpercentile(values, 75),
-        88: np.nanpercentile(values, 88),
-        94: np.nanpercentile(values, 94)
-    }
-
-def get_metric_group(metric_name):
-    for group in METRIC_GROUPS:
-        if metric_name in group['metrics']:
-            return group['name']
-    raise ValueError(f"Metric '{metric_name}' not found in any group")
-
-def format_metrics(range_obj, values, metric_name):
-    metrics_for_percentiles = ['Revenue delta', 'GP delta', 'Net Income delta', 'EBITDA delta', 'CFO delta', 'FCF delta',
-                               'Cash Ratio', 'Cash to Debt', 'Working Capital Turnover',
-                               'GP Margin', 'EBITDA Margin', 'Net Margin', 'Operating Margin', 'Free Cash Flow Margin',
-                               'ROA', 'ROE', 'ROIC']
-    for cell, value in zip(range_obj, values):
-        if pd.notna(value) and not np.isinf(value):
-            if metric_name == 'Current Ratio':
-                if value >= 3.0:
-                    cell.color = DARK_GREEN
-                elif value >= 2.0:
-                    cell.color = MED_GREEN
-                elif value >= 1.2:
-                    cell.color = LIGHT_GREEN
-                elif value >= 0.8:
-                    cell.color = None
-                elif value >= 0.5:
-                    cell.color = LIGHT_RED
-                else:
-                    cell.color = DARK_RED
-
-            elif metric_name == 'Quick Ratio':
-                if value >= 2.0:
-                    cell.color = DARK_GREEN
-                elif value >= 1.5:
-                    cell.color = MED_GREEN
-                elif value >= 1.0:
-                    cell.color = LIGHT_GREEN
-                elif value >= 0.5:
-                    cell.color = LIGHT_RED
-                else:
-                    cell.color = DARK_RED
-            
-            elif metric_name in metrics_for_percentiles:
-                percentiles = calculate_percentiles(values)
-                if percentiles[25] is not None:
-                    if value >= percentiles[94]:
-                        cell.color = DARK_GREEN
-                    elif value >= percentiles[88]:
-                        cell.color = MED_GREEN
-                    elif value >= percentiles[75]:
-                        cell.color = LIGHT_GREEN
-                    elif value <= percentiles[6]:
-                        cell.color = DARK_RED
-                    elif value <= percentiles[12]:
-                        cell.color = MED_RED
-                    elif value <= percentiles[25]:
-                        cell.color = LIGHT_RED
-
-            else:
-                continue
 
 def apply_conditional_formatting(sheet, metrics_df, start_row, start_col):
     # Work with transposed data to match Excel layout
@@ -212,15 +131,11 @@ def apply_conditional_formatting(sheet, metrics_df, start_row, start_col):
             
         row_values = transposed_metrics.loc[metric_name].values
         
-        # Calculate the range for this row's data cells
         current_row = start_row + 1 + row_idx  # +1 to skip header row
         data_range = sheet.range((current_row, start_col + 2),  # +2 to skip category and metric name columns
                                (current_row, start_col + 2 + len(row_values) - 1))
         
         format_metrics(data_range, row_values, metric_name)
-
-
-########################################### Write to Excel ###########################################
 
 
 def write_to_excel(sheet, metrics, start_row=3, start_col=5):
@@ -250,22 +165,18 @@ def write_to_excel(sheet, metrics, start_row=3, start_col=5):
                     category_cell.value = group['name']
                     first_metric = False
                 
-                # Write metric name
                 metric_cell = sheet.cells(current_row, start_col + 1)
                 metric_cell.value = metric_name
                 
-                # Add tooltip as comment
                 if metric_cell.api.Comment is not None:
                     metric_cell.api.Comment.Delete()
                 metric_cell.api.AddComment(description)
                 metric_cell.api.Comment.Visible = False
                 
-                # Write values
                 for col_num, value in enumerate(transposed_metrics.loc[metric_name], start=start_col + 2):
                     cell = sheet.cells(current_row, col_num)
                     cell.value = value
                     
-                    # Format cells
                     if '%' in metric_name:
                         cell.api.NumberFormat = "0.0%"
                     elif isinstance(value, (int, float)) and abs(value) >= 1000:
@@ -278,7 +189,7 @@ def write_to_excel(sheet, metrics, start_row=3, start_col=5):
                 sheet.cells(group_start_row, start_col),
                 sheet.cells(current_row - 1, start_col + len(years) + 2)
             )
-            border_range.api.Borders(9).Weight = 2  # Bottom border weight = 2 (thick)
+            border_range.api.Borders(9).Weight = 2
 
     table_range = sheet.range(
     sheet.cells(start_row, start_col),
@@ -294,21 +205,11 @@ def write_to_excel(sheet, metrics, start_row=3, start_col=5):
             pass
         elif (row_number - start_row) % 2 == 0:
             row.color = (217, 217, 217)  # Light grey
-
-    # Set minimum width for category and metric columns
-    sheet.api.Columns(start_col).ColumnWidth = 20
-    sheet.api.Columns(start_col + 1).ColumnWidth = 25
     
-    # Auto-fit remaining columns
-    for col in range(start_col + 2, start_col + len(years) + 2):
+    for col in range(start_col, start_col + len(years) + 2):
         sheet.api.Columns(col).AutoFit()
 
-    sheet = apply_conditional_formatting(sheet, metrics, start_row, start_col)
-
-    return sheet
-
-
-########################################### Main ###########################################
+    apply_conditional_formatting(sheet, metrics, start_row, start_col)
 
 
 def main():
@@ -318,7 +219,11 @@ def main():
 
     wb = xw.books.active
     sheet = wb.sheets.active
-    sheet = write_to_excel(sheet, metrics)
+    write_to_excel(sheet, metrics, start_row=3, start_col=5)
+    header_cell = sheet.cells(1, 5)
+    header_cell.value = f"{ticker} Overview"
+    header_cell.api.Font.Size = 36
+    header_cell.api.Font.Bold = True
     wb.save(spreadsheet_path)
 
 

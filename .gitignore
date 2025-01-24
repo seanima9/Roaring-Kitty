@@ -1,2 +1,5 @@
 api_key.json
 TODO.txt
+.venv/
+__pycache__/
+.pyc
