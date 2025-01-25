@@ -8,7 +8,7 @@ import json
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
-from src.formatting_helpers import get_metric_group, format_metrics
+from src.formatting_helpers import format_metrics
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 API_KEY_PATH = os.path.join(BASE_DIR, 'api_key.json')
@@ -35,60 +35,88 @@ YELLOW = COLORS['YELLOW']
 ndl.ApiConfig.api_key = API_KEY
 
 
-def grab_sf1_data(tickers):
-    def calculate_cagr(values):
-        start_value = values[0]
-        end_value = values[-1]
-        n_years = len(values) - 1
-        
-        if start_value * end_value < 0:
-            sign = 1 if end_value > start_value else -1
-            return sign * ((abs(end_value) / abs(start_value)) ** (1/n_years) - 1)
-        else:
-            return ((end_value / start_value) ** (1/n_years) - 1)
-        
-    all_metrics = {}
+def calculate_cagr(values):
+    start_value = values[0]
+    end_value = values[-1]
+    n_years = len(values) - 1
     
+    return ((end_value / start_value) ** (1/n_years) - 1)
+    
+def grab_sf1_data(tickers):  
+    all_metrics = {}
     for ticker in tickers:
         metrics = {}
         data = ndl.get_table('SHARADAR/SF1', ticker=ticker, paginate=True)
         
-        data = data[data['dimension'] == 'ART']
+        data = data[data['dimension'] == 'ART']  # As Reported, Trailing Twelve Months (TTM)
         ltm = data.iloc[0:1]
-        annual_data = data[data['fiscalperiod'].str.contains('Q4')].copy()
-        annual_data = annual_data.sort_values('calendardate', ascending=False).head(5)
+        data = data[data['fiscalperiod'].str.contains('Q4')].copy()
+
+        if data['fiscalperiod'].duplicated().any():
+            data = data.sort_values('calendardate', ascending=False).drop_duplicates('fiscalperiod').sort_index()
+
+        data['calendardate'] = pd.to_datetime(data['calendardate'])
+        data['year'] = data['calendardate'].dt.year
+        ltm['calendardate'] = pd.to_datetime(ltm['calendardate'])
+        ltm['year'] = 'LTM'
+
+        data = data.sort_values('year').reset_index(drop=True)
+        data = pd.concat([data, ltm]).tail(4)
         
-        if annual_data['fiscalperiod'].duplicated().any():
-            annual_data = annual_data.sort_values('calendardate', 
-                                                ascending=False).drop_duplicates('fiscalperiod').sort_index()
-        
-        annual_data['calendardate'] = pd.to_datetime(annual_data['calendardate'])
-        annual_data['year'] = annual_data['calendardate'].dt.year
-        annual_data = annual_data.sort_values('year')
-        
-        metrics["TEV"] = ltm['ev']
+        # Valuation Metrics
+        metrics['TEV'] = ltm['ev'] / 1_000_000
+        metrics['Mkt Cap'] = ltm['marketcap'] / 1_000_000
         metrics['TEV/EBITDA'] = ltm['ev'] / ltm['ebitda']
         metrics['TEV/Rev'] = ltm['ev'] / ltm['revenue']
+        metrics['TEV/FCF'] = ltm['ev'] / ltm['fcf']
+        metrics['P/E'] = ltm['pe']
         metrics['P/B'] = ltm['pb']
+        metrics['EPS'] = ltm['eps']
 
-        metrics['Rev CAGR'] = calculate_cagr(annual_data['revenue'].values)
-        metrics['GP CAGR'] = calculate_cagr(annual_data['gp'].values)
-        metrics['EBIDTA CAGR'] = calculate_cagr(annual_data['ebitda'].values)
-        metrics['Net Inc CAGR'] = calculate_cagr(annual_data['netinc'].values)
-        metrics['CFO CAGR'] = calculate_cagr(annual_data['ncfo'].values)
-        metrics['FCF CAGR'] = calculate_cagr(annual_data['fcf'].values)
+        # Income Statement
+        metrics['Rev'] = ltm['revenue'] / 1_000_000
+        metrics['Rev 3YCAGR'] = calculate_cagr(data['revenue'].values)
+        metrics['GP'] = ltm['gp'] / 1_000_000
+        metrics['Net Inc'] = ltm['netinc'] / 1_000_000
+        metrics['Op Inc'] = ltm['opinc'] / 1_000_000
+        metrics['EBITDA'] = ltm['ebitda'] / 1_000_000
 
-        metrics['Lev Ratio'] = ltm['assets'] / ltm['equity']
-        metrics['Cash/Debt'] = ltm['cashneq'] / ltm['debt']
+        # Cash Flow
+        metrics['CFO'] = ltm['ncfo'] / 1_000_000
+        metrics['FCF'] = ltm['fcf'] / 1_000_000
+        metrics['Op Exp'] = ltm['opex'] / 1_000_000
+        metrics['Int Exp'] = ltm['intexp'] / 1_000_000
 
+        # Margins
         metrics['GP Marg'] = ltm['grossmargin']
+        metrics['EBITDA Marg'] = ltm['ebitdamargin']
         metrics['Net Marg'] = ltm['netmargin']
+        metrics['Op Marg'] = ltm['opinc'] / ltm['revenue']
+        metrics['FCF Marg'] = ltm['fcf'] / ltm['revenue']
 
-        metrics['Curr Ratio'] = ltm['currentratio']
+        # Balance Sheet
+        metrics['Equity'] = ltm['equity'] / 1_000_000
+        metrics['Debt'] = ltm['debt'] / 1_000_000
+        metrics['Assets'] = ltm['assets'] / 1_000_000
+        metrics['Liab'] = ltm['liabilities'] / 1_000_000
+        metrics['TBV'] = (ltm['assets'] - ltm['intangibles'] - ltm['liabilities']) / 1_000_000
+
+        # Solvency
         metrics['D/E'] = ltm['debt'] / ltm['equity']
         metrics['Debt/EBITDA'] = ltm['debt'] / ltm['ebitda']
+        metrics['Cash Ratio'] = ltm['cashneq'] / ltm['liabilitiesc']
+        metrics['Cash/Debt'] = ltm['cashneq'] / ltm['debt']
+        metrics['Int Cov'] = ltm['ebit'] / ltm['intexp']
+
+        # Liquidity
+        metrics['Curr Ratio'] = ltm['currentratio']
+        metrics['Quick Ratio'] = (ltm['assetsc'] - ltm['inventory']) / ltm['liabilitiesc']
+
+        # Efficiency
+        metrics['WC Turn'] = ltm['revenue'] / (ltm['assetsc'] - ltm['liabilitiesc'])
         metrics['Asset Turn'] = ltm['assetturnover']
 
+        # Profitability
         metrics['ROA'] = ltm['roa']
         metrics['ROE'] = ltm['roe']
         metrics['ROIC'] = ltm['roic']
@@ -103,12 +131,7 @@ def grab_sf1_data(tickers):
 
 
 def apply_conditional_formatting(sheet, metrics_df, start_row, start_col):
-    for col_idx, metric_name in enumerate(metrics_df.columns):
-        metric_group = get_metric_group(metric_name)
-        
-        if metric_group == 'Valuation Metrics':
-            continue
-            
+    for col_idx, metric_name in enumerate(metrics_df.columns):            
         current_col = start_col + 2 + col_idx
         data_range = sheet.range(
             sheet.cells(start_row + 1, current_col), # Skip header row

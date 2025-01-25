@@ -8,7 +8,7 @@ import json
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
-from src.formatting_helpers import get_metric_group, format_metrics
+from src.formatting_helpers import format_metrics
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 API_KEY_PATH = os.path.join(BASE_DIR, 'api_key.json')
@@ -35,6 +35,16 @@ YELLOW = COLORS['YELLOW']
 ndl.ApiConfig.api_key = API_KEY
 
 
+def calculate_rolling_cagr(values):
+    cagr = pd.Series(index=values.index)
+    
+    for i in range(3, len(values)):
+        end_value = values.iloc[i]
+        start_value = values.iloc[i-3]
+        cagr.iloc[i] = (end_value / start_value) ** (1/3) - 1
+                
+    return cagr
+
 def grab_sf1_time_series_data(ticker):
     metrics = {}
     data = ndl.get_table('SHARADAR/SF1', ticker=ticker, paginate=True)
@@ -54,6 +64,7 @@ def grab_sf1_time_series_data(ticker):
     data = data.sort_values('year').reset_index(drop=True)
     data = pd.concat([data, ltm])
 
+    # Valuation Metrics
     metrics['TEV'] = data['ev'] / 1_000_000
     metrics['Mkt Cap'] = data['marketcap'] / 1_000_000
     metrics['TEV/EBITDA'] = data['ev'] / data['ebitda']
@@ -61,53 +72,52 @@ def grab_sf1_time_series_data(ticker):
     metrics['TEV/FCF'] = data['ev'] / data['fcf']
     metrics['P/E'] = data['pe']
     metrics['P/B'] = data['pb']
-
-    metrics['Rev'] = data['revenue'] / 1_000_000
-    metrics['Rev \u0394'] = (data['revenue'] / 1_000_000).diff()
-    metrics['GP'] = data['gp'] / 1_000_000
-    metrics['GP \u0394'] = (data['gp'] / 1_000_000).diff()
-    metrics['Net Inc'] = data['netinc'] / 1_000_000
-    metrics['Net Inc \u0394'] = (data['netinc'] / 1_000_000).diff()
-    metrics['Op Inc'] = data['opinc'] / 1_000_000
-    metrics['Op Exp'] = data['opex'] / 1_000_000
-    metrics['EBITDA'] = data['ebitda'] / 1_000_000
-    metrics['EBITDA \u0394'] = (data['ebitda'] / 1_000_000).diff()
     metrics['EPS'] = data['eps']
+
+    # Income Statement
+    metrics['Rev'] = data['revenue'] / 1_000_000
+    metrics['Rev 3YCAGR'] = calculate_rolling_cagr(data['revenue'])
+    metrics['GP'] = data['gp'] / 1_000_000
+    metrics['Net Inc'] = data['netinc'] / 1_000_000
+    metrics['Op Inc'] = data['opinc'] / 1_000_000
+    metrics['EBITDA'] = data['ebitda'] / 1_000_000
+
+    # Cash Flow
+    metrics['CFO'] = data['ncfo'] / 1_000_000
+    metrics['FCF'] = data['fcf'] / 1_000_000
+    metrics['Op Exp'] = data['opex'] / 1_000_000
     metrics['Int Exp'] = data['intexp'] / 1_000_000
 
-    metrics['CFO'] = data['ncfo'] / 1_000_000
-    metrics['CFO \u0394'] = (data['ncfo'] / 1_000_000).diff()
-    metrics['FCF'] = data['fcf'] / 1_000_000
-    metrics['FCF \u0394'] = (data['fcf'] / 1_000_000).diff()
-
-    metrics['Equity'] = data['equity'] / 1_000_000
-    metrics['Debt'] = data['debt'] / 1_000_000
-    metrics['Assets'] = data['assets'] / 1_000_000
-    metrics['Liab'] = data['liabilities'] / 1_000_000
-    metrics['NWC'] = (data['assetsc'] - data['liabilitiesc']) / 1_000_000
-    metrics['Cash Ratio'] = data['cashneq'] / data['liabilitiesc']
-    metrics['TBV'] = (data['assets'] - data['intangibles'] - data['liabilities']) / 1_000_000
-    metrics['Lev Ratio'] = data['assets'] / data['equity']
-    metrics['Int-Bearing Debt'] = (data['debtc'] + data['debtnc']) / 1_000_000
-    metrics['Debt/Cap'] = data['debt'] / (data['debt'] + data['equity'])
-    metrics['Cash/Debt'] = data['cashneq'] / data['debt']
-    metrics['NetDebt/Assets'] = (data['debt'] - data['cashneq']) / data['assets']
-    metrics['WC Turn'] = data['revenue'] / (data['assetsc'] - data['liabilitiesc'])
-
+    # Margins
     metrics['GP Marg'] = data['grossmargin']
     metrics['EBITDA Marg'] = data['ebitdamargin']
     metrics['Net Marg'] = data['netmargin']
     metrics['Op Marg'] = data['opinc'] / data['revenue']
     metrics['FCF Marg'] = data['fcf'] / data['revenue']
 
-    metrics['Curr Ratio'] = data['currentratio']
-    metrics['Quick Ratio'] = (data['assetsc'] - data['inventory']) / data['liabilitiesc']
-    metrics['Payout Ratio'] = data['payoutratio']
+    # Balance Sheet
+    metrics['Equity'] = data['equity'] / 1_000_000
+    metrics['Debt'] = data['debt'] / 1_000_000
+    metrics['Assets'] = data['assets'] / 1_000_000
+    metrics['Liab'] = data['liabilities'] / 1_000_000
+    metrics['TBV'] = (data['assets'] - data['intangibles'] - data['liabilities']) / 1_000_000
+
+    # Solvency
     metrics['D/E'] = data['debt'] / data['equity']
     metrics['Debt/EBITDA'] = data['debt'] / data['ebitda']
-    metrics['Asset Turn'] = data['assetturnover']
+    metrics['Cash Ratio'] = data['cashneq'] / data['liabilitiesc']
+    metrics['Cash/Debt'] = data['cashneq'] / data['debt']
     metrics['Int Cov'] = data['ebit'] / data['intexp']
 
+    # Liquidity
+    metrics['Curr Ratio'] = data['currentratio']
+    metrics['Quick Ratio'] = (data['assetsc'] - data['inventory']) / data['liabilitiesc']
+
+    # Efficiency
+    metrics['WC Turn'] = data['revenue'] / (data['assetsc'] - data['liabilitiesc'])
+    metrics['Asset Turn'] = data['assetturnover']
+
+    # Profitability
     metrics['ROA'] = data['roa']
     metrics['ROE'] = data['roe']
     metrics['ROIC'] = data['roic']
@@ -123,12 +133,7 @@ def apply_conditional_formatting(sheet, metrics_df, start_row, start_col):
     # Work with transposed data to match Excel layout
     transposed_metrics = metrics_df.transpose()
     
-    for row_idx, metric_name in enumerate(transposed_metrics.index):
-        metric_group = get_metric_group(metric_name)
-        
-        if metric_group == 'Valuation Metrics':
-            continue
-            
+    for row_idx, metric_name in enumerate(transposed_metrics.index):    
         row_values = transposed_metrics.loc[metric_name].values
         
         current_row = start_row + 1 + row_idx  # +1 to skip header row
@@ -177,7 +182,7 @@ def write_to_excel(sheet, metrics, start_row=3, start_col=5):
                     cell = sheet.cells(current_row, col_num)
                     cell.value = value
                     
-                    if '%' in metric_name:
+                    if 'CAGR' in metric_name:
                         cell.api.NumberFormat = "0.0%"
                     elif isinstance(value, (int, float)) and abs(value) >= 1000:
                         cell.api.NumberFormat = "#,##0.00"

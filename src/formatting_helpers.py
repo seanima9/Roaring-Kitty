@@ -36,24 +36,10 @@ def calculate_percentiles(values):
         94: np.nanpercentile(values, 94)
     }
 
-
-def get_metric_group(metric_name):
-    for group in METRIC_GROUPS:
-        if metric_name in group['metrics']:
-            return group['name']
-    raise ValueError(f"Metric '{metric_name}' not found in any group")
-
-
 def format_metrics(range_obj, values, metric_name):
-    metrics_for_percentiles = [
-    'Rev CAGR', 'GP CAGR', 'Net Inc CAGR', 'EBITDA CAGR', 
-    'CFO CAGR', 'FCF CAGR','Rev \u0394', 'GP \u0394',
-    'Net Inc \u0394', 'EBITDA \u0394', 'CFO \u0394', 'FCF \u0394',
-    'Cash Ratio', 'Cash/Debt', 'WC Turn', 'GP Marg',
-    'EBITDA Marg', 'Net Marg', 'Op Marg', 'FCF Marg', 
-    'ROA', 'ROE', 'ROIC'
-    ]
-    
+    metrics_for_percentiles = ['EPS', 'Rev 3YCAGR', 'GP Marg', 'EBITDA Marg', 'Net Marg', 'Op Marg', 'FCF Marg'
+                               'D/E', 'Debt/EBITDA', 'Cash Ratio', 'Cash/Debt', 'WC Turn', 'Asset Turn',
+                               'ROA', 'ROE', 'ROIC']
     for cell, value in zip(range_obj, values):
         if pd.notna(value) and not np.isinf(value):
             if metric_name == 'Current Ratio':
