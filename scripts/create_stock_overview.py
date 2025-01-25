@@ -86,6 +86,7 @@ def grab_sf1_time_series_data(ticker):
     metrics['CFO'] = data['ncfo'] / 1_000_000
     metrics['FCF'] = data['fcf'] / 1_000_000
     metrics['Op Exp'] = data['opex'] / 1_000_000
+    metrics['CapEx'] = data['capex'] / 1_000_000
     metrics['Int Exp'] = data['intexp'] / 1_000_000
 
     # Margins

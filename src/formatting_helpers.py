@@ -37,12 +37,12 @@ def calculate_percentiles(values):
     }
 
 def format_metrics(range_obj, values, metric_name):
-    metrics_for_percentiles = ['EPS', 'Rev 3YCAGR', 'GP Marg', 'EBITDA Marg', 'Net Marg', 'Op Marg', 'FCF Marg'
+    metrics_for_percentiles = ['EPS', 'Rev 3YCAGR', 'GP Marg', 'EBITDA Marg', 'Net Marg', 'Op Marg', 'FCF Marg',
                                'D/E', 'Debt/EBITDA', 'Cash Ratio', 'Cash/Debt', 'WC Turn', 'Asset Turn',
                                'ROA', 'ROE', 'ROIC']
     for cell, value in zip(range_obj, values):
         if pd.notna(value) and not np.isinf(value):
-            if metric_name == 'Current Ratio':
+            if metric_name == 'Curr Ratio':
                 if value >= 3.0:
                     cell.color = DARK_GREEN
                 elif value >= 2.0:

@@ -65,27 +65,15 @@ def grab_sf1_data(tickers):
         
         # Valuation Metrics
         metrics['TEV'] = ltm['ev'] / 1_000_000
-        metrics['Mkt Cap'] = ltm['marketcap'] / 1_000_000
         metrics['TEV/EBITDA'] = ltm['ev'] / ltm['ebitda']
         metrics['TEV/Rev'] = ltm['ev'] / ltm['revenue']
         metrics['TEV/FCF'] = ltm['ev'] / ltm['fcf']
-        metrics['P/E'] = ltm['pe']
         metrics['P/B'] = ltm['pb']
         metrics['EPS'] = ltm['eps']
 
         # Income Statement
         metrics['Rev'] = ltm['revenue'] / 1_000_000
         metrics['Rev 3YCAGR'] = calculate_cagr(data['revenue'].values)
-        metrics['GP'] = ltm['gp'] / 1_000_000
-        metrics['Net Inc'] = ltm['netinc'] / 1_000_000
-        metrics['Op Inc'] = ltm['opinc'] / 1_000_000
-        metrics['EBITDA'] = ltm['ebitda'] / 1_000_000
-
-        # Cash Flow
-        metrics['CFO'] = ltm['ncfo'] / 1_000_000
-        metrics['FCF'] = ltm['fcf'] / 1_000_000
-        metrics['Op Exp'] = ltm['opex'] / 1_000_000
-        metrics['Int Exp'] = ltm['intexp'] / 1_000_000
 
         # Margins
         metrics['GP Marg'] = ltm['grossmargin']
@@ -95,11 +83,8 @@ def grab_sf1_data(tickers):
         metrics['FCF Marg'] = ltm['fcf'] / ltm['revenue']
 
         # Balance Sheet
-        metrics['Equity'] = ltm['equity'] / 1_000_000
-        metrics['Debt'] = ltm['debt'] / 1_000_000
         metrics['Assets'] = ltm['assets'] / 1_000_000
         metrics['Liab'] = ltm['liabilities'] / 1_000_000
-        metrics['TBV'] = (ltm['assets'] - ltm['intangibles'] - ltm['liabilities']) / 1_000_000
 
         # Solvency
         metrics['D/E'] = ltm['debt'] / ltm['equity']
