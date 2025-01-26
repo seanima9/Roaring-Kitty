@@ -37,12 +37,13 @@ def calculate_percentiles(values):
     }
 
 def format_metrics(range_obj, values, metric_name):
-    metrics_for_percentiles = ['EPS', 'Rev 3YCAGR', 'GP Marg', 'EBITDA Marg', 'Net Marg', 'Op Marg', 'FCF Marg',
-                               'D/E', 'Debt/EBITDA', 'Cash Ratio', 'Cash/Debt', 'WC Turn', 'Asset Turn',
-                               'ROA', 'ROE', 'ROIC']
+    good_high = ['EPS', 'Rev 3YCAGR', 'GP Marg', 'EBITDA Marg', 'Net Marg', 'Op Marg', 'FCF Marg',
+                    'Cash Ratio', 'Cash/Debt', 'WC Turn', 'Asset Turn', 'ROA', 'ROE', 'ROIC']
+    good_low = ['TEV/Rev', 'D/E', 'Debt/EBITDA']
+
     for cell, value in zip(range_obj, values):
         if pd.notna(value) and not np.isinf(value):
-            if metric_name == 'Curr Ratio':
+            if metric_name == 'CurrRatio':
                 if value >= 3.0:
                     cell.color = DARK_GREEN
                 elif value >= 2.0:
@@ -56,7 +57,7 @@ def format_metrics(range_obj, values, metric_name):
                 else:
                     cell.color = DARK_RED
 
-            elif metric_name == 'Quick Ratio':
+            elif metric_name == 'QuickRatio':
                 if value >= 2.0:
                     cell.color = DARK_GREEN
                 elif value >= 1.5:
@@ -68,7 +69,7 @@ def format_metrics(range_obj, values, metric_name):
                 else:
                     cell.color = DARK_RED
             
-            elif metric_name in metrics_for_percentiles:
+            elif metric_name in good_high:
                 percentiles = calculate_percentiles(values)
                 if percentiles[25] is not None:
                     if value >= percentiles[94]:
@@ -82,4 +83,20 @@ def format_metrics(range_obj, values, metric_name):
                     elif value <= percentiles[12]:
                         cell.color = MED_RED
                     elif value <= percentiles[25]:
+                        cell.color = LIGHT_RED
+
+            elif metric_name in good_low:
+                percentiles = calculate_percentiles(values)
+                if percentiles[25] is not None:
+                    if value <= percentiles[6]:
+                        cell.color = DARK_GREEN
+                    elif value <= percentiles[12]:
+                        cell.color = MED_GREEN
+                    elif value <= percentiles[25]:
+                        cell.color = LIGHT_GREEN
+                    elif value >= percentiles[94]:
+                        cell.color = DARK_RED
+                    elif value >= percentiles[88]:
+                        cell.color = MED_RED
+                    elif value >= percentiles[75]:
                         cell.color = LIGHT_RED
