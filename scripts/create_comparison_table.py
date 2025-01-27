@@ -128,7 +128,7 @@ def apply_conditional_formatting(sheet, metrics_df, start_row, start_col):
         format_metrics(data_range, metric_values, metric_name)
 
 
-def write_to_excel(sheet, metrics_df, companies_dict, start_row=3, start_col=5):
+def write_to_excel(sheet, metrics_df, companies_dict, start_row=4, start_col=5):
     sheet.cells(start_row, start_col).value = "Ticker"
     sheet.cells(start_row, start_col + 1).value = "Sector"
     
@@ -215,12 +215,11 @@ def main():
     
     wb = xw.books.active
     sheet = wb.sheets.active
-    write_to_excel(sheet, metrics, companies_dict, start_row=3, start_col=5)
+    write_to_excel(sheet, metrics, companies_dict, start_row=4, start_col=5)
     header_cell = sheet.cells(1, 5)
     header_cell.value = "RK Tracker"
     header_cell.api.Font.Size = 36
     header_cell.api.Font.Bold = True
-    wb.save(spreadsheet_path)
 
 
 main()

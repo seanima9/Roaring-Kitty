@@ -16,18 +16,18 @@
     {
       "name": "Income Statement",
       "metrics": {
-        "Rev": "Total Sales",
+        "Rev": "Total Sales (Accrual Basis)",
         "Rev 3YCAGR": "((Current Year Revenue / Revenue 3 Years Ago)^(1/3)) - 1, 3Y Compound Annual Growth Rate for Revenue",
-        "GP": "Gross Profit, Revenue - Cost of Goods Sold (COGS)",
-        "Net Inc": "Revenue - All Expenses",
-        "Op Inc": "Revenue - Operating Expenses",
-        "EBITDA": "Operating Income + Depreciation & Amortization"
+        "GP": "Gross Profit, Revenue - Cost of Goods Sold (COGS) (Accrual Basis)",
+        "Net Inc": "Revenue - All Expenses (Accrual Basis)",
+        "Op Inc": "Revenue - Cost of Good Sold (COGS) - Operating Expenses (Accrual Basis)",
+        "EBITDA": "Operating Income + Depreciation & Amortization (Accrual Basis)"
       }
     },
     {
       "name": "Cash Flow",
       "metrics": {
-        "CFO": "Operating Cash Flow, Net Income + Non-Cash Expenses + Changes in Working Capital",
+        "CFO": "Operating Cash Flow, Net Income + D&A (Non-Cash Expenses) + Changes in Working Capital (Cash Basis)",
         "FCF": "CFO - Capital Expenditures",
         "Op Exp": "Operating Expenses",
         "CapEx": "Capital Expenditures",

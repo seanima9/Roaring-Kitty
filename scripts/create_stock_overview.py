@@ -144,7 +144,7 @@ def apply_conditional_formatting(sheet, metrics_df, start_row, start_col):
         format_metrics(data_range, row_values, metric_name)
 
 
-def write_to_excel(sheet, metrics, start_row=3, start_col=5):
+def write_to_excel(sheet, metrics, start_row=4, start_col=5):
     years = sorted([idx for idx in metrics.index if idx != 'LTM'])
     max_years_for_data = 15
     if len(years) > max_years_for_data:
@@ -225,12 +225,11 @@ def main():
 
     wb = xw.books.active
     sheet = wb.sheets.active
-    write_to_excel(sheet, metrics, start_row=3, start_col=5)
+    write_to_excel(sheet, metrics, start_row=4, start_col=5)
     header_cell = sheet.cells(1, 5)
     header_cell.value = f"{ticker} Overview"
     header_cell.api.Font.Size = 36
     header_cell.api.Font.Bold = True
-    wb.save(spreadsheet_path)
 
 
 main()
