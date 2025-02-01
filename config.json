@@ -5,6 +5,7 @@
       "metrics": {
         "TEV": "Market Cap + Total Debt - Cash",
         "Mkt Cap": "Share Price x Total Shares Outstanding",
+        "SP": "Share Price",
         "TEV/EBITDA": "TEV / EBITDA",
         "TEV/Rev": "TEV / Revenue",
         "TEV/FCF": "TEV / Free Cash Flow",
@@ -76,6 +77,13 @@
       "metrics": {
         "WC Turn": "Revenue / (Current Assets - Current Liabilities)",
         "Asset Turn": "Revenue / Total Assets"
+      }
+    },
+    {
+      "name": "Shareholder Yield",
+      "metrics": {
+        "BB Yield": "Buyback Yield, (Net Shares Repurchased / Total Shares Outstanding)",
+        "Ins Buys": "Total Shares Purchased by Insiders"
       }
     },
     {
