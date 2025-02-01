@@ -92,10 +92,15 @@ def grab_data(tickers):
         fx_conv_ltm = ltm['fxusd'].iloc[0]
         new_ev = current_market_cap + ((ltm['debt'].iloc[0] - ltm['cashneq'].iloc[0]) / fx_conv_ltm)
 
+        if np.isnan(data['ebitda'].iloc[-1]): # LTM EBIDTA is nan for Chinese stocks
+            ltm_ebitda = data['ebitda'].iloc[-2]
+        else:
+            ltm_ebitda = data['ebitda'].iloc[-1]
+            
         # Valuation Metrics
         metrics['TEV'] = new_ev / 1_000_000
         metrics['SP'] = latest_share_price
-        metrics['TEV/EBITDA'] = new_ev / (ltm['ebitda'].iloc[0] / fx_conv_ltm)
+        metrics['TEV/EBITDA'] = new_ev / (ltm_ebitda / fx_conv_ltm)
         metrics['TEV/Rev'] = new_ev / (ltm['revenue'].iloc[0] / fx_conv_ltm)
         metrics['TEV/FCF'] = new_ev / (ltm['fcf'].iloc[0] / fx_conv_ltm)
         metrics['P/B'] = current_market_cap / (ltm['equity'].iloc[0] / fx_conv_ltm)
@@ -219,7 +224,7 @@ def write_to_excel(sheet, metrics_df, companies_dict, start_row=4, start_col=5):
 
 
 def api_test():
-    tickers = ['NVDA', 'TSM', 'AMD']
+    tickers = ['NVDA', 'TSM', 'BABA']
     metrics = grab_data(tickers)
     print(metrics)
 

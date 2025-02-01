@@ -97,11 +97,15 @@ def grab_time_series_data(ticker):
 
     ltm_debt = data['debt'].iloc[-1] / data['fxusd'].iloc[-1]
     ltm_cash = data['cashneq'].iloc[-1] / data['fxusd'].iloc[-1]
-    ltm_ebitda = data['ebitda'].iloc[-1] / data['fxusd'].iloc[-1]
     ltm_revenue = data['revenue'].iloc[-1] / data['fxusd'].iloc[-1]
     ltm_fcf = data['fcf'].iloc[-1] / data['fxusd'].iloc[-1]
     ltm_netinc = data['netinc'].iloc[-1] / data['fxusd'].iloc[-1]
     ltm_equity = data['equity'].iloc[-1] / data['fxusd'].iloc[-1]
+
+    if np.isnan(data['ebitda'].iloc[-1]): # LTM EBIDTA is nan for Chinese stocks
+        ltm_ebitda = data['ebitda'].iloc[-2] / data['fxusd'].iloc[-1]
+    else:
+        ltm_ebitda = data['ebitda'].iloc[-1] / data['fxusd'].iloc[-1]
 
     new_ev = current_market_cap + ltm_debt - ltm_cash
 
@@ -263,7 +267,7 @@ def write_to_excel(sheet, metrics, start_row=4, start_col=5):
 
 
 def api_test():
-    data = grab_time_series_data('TSM')
+    data = grab_time_series_data('BABA')
     print(data)
 
 def main():
