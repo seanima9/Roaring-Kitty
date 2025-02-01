@@ -46,6 +46,13 @@
       }
     },
     {
+      "name": "Shareholder Yield",
+      "metrics": {
+        "BB Yield": "Buyback Yield, (Net Shares Repurchased / Total Shares Outstanding)",
+        "Ins Buys": "Total Shares Purchased by Insiders"
+      }
+    },
+    {
       "name": "Balance Sheet",
       "metrics": {
         "Equity": "Total Assets - Total Liabilities",
@@ -77,13 +84,6 @@
       "metrics": {
         "WC Turn": "Revenue / (Current Assets - Current Liabilities)",
         "Asset Turn": "Revenue / Total Assets"
-      }
-    },
-    {
-      "name": "Shareholder Yield",
-      "metrics": {
-        "BB Yield": "Buyback Yield, (Net Shares Repurchased / Total Shares Outstanding)",
-        "Ins Buys": "Total Shares Purchased by Insiders"
       }
     },
     {

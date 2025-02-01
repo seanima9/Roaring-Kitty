@@ -42,7 +42,7 @@ def calculate_cagr(values):
     
     return ((end_value / start_value) ** (1/n_years) - 1)
     
-def grab_sf1_data(tickers):  
+def grab_data(tickers):  
     all_metrics = {}
     for ticker in tickers:
         metrics = {}
@@ -62,13 +62,41 @@ def grab_sf1_data(tickers):
 
         data = data.sort_values('year').reset_index(drop=True)
         data = pd.concat([data, ltm]).tail(4)
-        
+
+        if len(data) >= 2:
+            previous_shares = data['sharesbas'].iloc[-2]
+            current_shares = data['sharesbas'].iloc[-1]
+            bb_yield = (previous_shares - current_shares) / previous_shares
+        else:
+            bb_yield = np.nan
+
+
+        sf2_data = ndl.get_table('SHARADAR/SF2', ticker=ticker, paginate=True)
+        sf2_data['transactiondate'] = pd.to_datetime(sf2_data['transactiondate'])
+        insider_buys = sf2_data[sf2_data['transactioncode'] == 'P']
+
+        end_date = pd.to_datetime(sf2_data['transactiondate'].max())
+        start_date = end_date - pd.DateOffset(months=12)
+
+        insider_buys_count = insider_buys[
+            (insider_buys['transactiondate'] > start_date) & 
+            (insider_buys['transactiondate'] <= end_date)
+        ].shape[0]
+
+        sep_data = ndl.get_table('SHARADAR/SEP', ticker=ticker, paginate=True)
+        sep_data['date'] = pd.to_datetime(sep_data['date'])
+        latest_share_price = sep_data.sort_values('date').iloc[-1]['close']
+        current_shares_outstanding = data['sharesbas'].iloc[-1]
+        current_market_cap = latest_share_price * current_shares_outstanding
+
+        new_ev = current_market_cap + ltm['debt'].iloc[0] - ltm['cashneq'].iloc[0]
+
         # Valuation Metrics
-        metrics['TEV'] = ltm['ev'] / 1_000_000
-        metrics['TEV/EBITDA'] = ltm['ev'] / ltm['ebitda']
-        metrics['TEV/Rev'] = ltm['ev'] / ltm['revenue']
-        metrics['TEV/FCF'] = ltm['ev'] / ltm['fcf']
-        metrics['P/B'] = ltm['pb']
+        metrics['TEV'] = new_ev / 1_000_000
+        metrics['TEV/EBITDA'] = new_ev / ltm['ebitda'].iloc[0]
+        metrics['TEV/Rev'] = new_ev / ltm['revenue'].iloc[0]
+        metrics['TEV/FCF'] = new_ev / ltm['fcf'].iloc[0]
+        metrics['P/B'] = current_market_cap / ltm['equity'].iloc[0]
         metrics['EPS'] = ltm['eps']
 
         # Income Statement
@@ -82,9 +110,9 @@ def grab_sf1_data(tickers):
         metrics['Op Marg'] = ltm['opinc'] / ltm['revenue']
         metrics['FCF Marg'] = ltm['fcf'] / ltm['revenue']
 
-        # Balance Sheet
-        metrics['Assets'] = ltm['assets'] / 1_000_000
-        metrics['Liab'] = ltm['liabilities'] / 1_000_000
+        # Shareholder Yield
+        metrics['BB Yield'] = bb_yield
+        metrics['Ins Buys'] = insider_buys_count
 
         # Solvency
         metrics['D/E'] = ltm['debt'] / ltm['equity']
@@ -162,7 +190,7 @@ def write_to_excel(sheet, metrics_df, companies_dict, start_row=4, start_col=5):
                     cell.value = value
 
                     metric_name = metrics_df.columns[col_num - (start_col + 2)]
-                    if 'CAGR' in metric_name:
+                    if 'CAGR' in metric_name or 'Yield' in metric_name:
                         cell.api.NumberFormat = "0.0%"
                     elif isinstance(value, (int, float)) and abs(value) >= 1000:
                         cell.api.NumberFormat = "#,##0.00"
@@ -190,7 +218,7 @@ def write_to_excel(sheet, metrics_df, companies_dict, start_row=4, start_col=5):
 
 def api_test():
     tickers = ['NVDA', 'AVGO', 'AMD']
-    metrics = grab_sf1_data(tickers)
+    metrics = grab_data(tickers)
     print(metrics)
 
 def main():
@@ -211,7 +239,7 @@ def main():
             if current_sector:
                 companies_dict[current_sector].append(item)
     
-    metrics = grab_sf1_data(tickers)
+    metrics = grab_data(tickers)
     
     wb = xw.books.active
     sheet = wb.sheets.active

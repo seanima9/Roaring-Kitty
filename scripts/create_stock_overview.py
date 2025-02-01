@@ -45,7 +45,7 @@ def calculate_rolling_cagr(values):
                 
     return cagr
 
-def grab_sf1_time_series_data(ticker):
+def grab_time_series_data(ticker):
     metrics = {}
     data = ndl.get_table('SHARADAR/SF1', ticker=ticker, paginate=True)
 
@@ -88,6 +88,7 @@ def grab_sf1_time_series_data(ticker):
     # Valuation Metrics
     metrics['TEV'] = data['ev'] / 1_000_000
     metrics['Mkt Cap'] = data['marketcap'] / 1_000_000
+    metrics['SP'] = latest_share_price
     metrics['TEV/EBITDA'] = data['ev'] / data['ebitda']
     metrics['TEV/Rev'] = data['ev'] / data['revenue']
     metrics['TEV/FCF'] = data['ev'] / data['fcf']
@@ -95,23 +96,23 @@ def grab_sf1_time_series_data(ticker):
     metrics['P/B'] = data['pb']
     metrics['EPS'] = data['eps']
 
-    ltm_debt   = data['debt'].iloc[-1]
-    ltm_cash   = data['cashneq'].iloc[-1]
+    ltm_debt = data['debt'].iloc[-1]
+    ltm_cash = data['cashneq'].iloc[-1]
     ltm_ebitda = data['ebitda'].iloc[-1]
-    ltm_revenue= data['revenue'].iloc[-1]
-    ltm_fcf    = data['fcf'].iloc[-1]
+    ltm_revenue = data['revenue'].iloc[-1]
+    ltm_fcf = data['fcf'].iloc[-1]
     ltm_netinc = data['netinc'].iloc[-1]
     ltm_equity = data['equity'].iloc[-1]
 
     new_ev = current_market_cap + ltm_debt - ltm_cash
 
-    metrics['TEV'].iat[-1]        = new_ev / 1_000_000
-    metrics['Mkt Cap'].iat[-1]    = current_market_cap / 1_000_000
+    metrics['TEV'].iat[-1] = new_ev / 1_000_000
+    metrics['Mkt Cap'].iat[-1] = current_market_cap / 1_000_000
     metrics['TEV/EBITDA'].iat[-1] = new_ev / ltm_ebitda
-    metrics['TEV/Rev'].iat[-1]    = new_ev / ltm_revenue
-    metrics['TEV/FCF'].iat[-1]    = new_ev / ltm_fcf
-    metrics['P/E'].iat[-1]        = current_market_cap / ltm_netinc
-    metrics['P/B'].iat[-1]        = current_market_cap / ltm_equity
+    metrics['TEV/Rev'].iat[-1] = new_ev / ltm_revenue
+    metrics['TEV/FCF'].iat[-1] = new_ev / ltm_fcf
+    metrics['P/E'].iat[-1] = current_market_cap / ltm_netinc
+    metrics['P/B'].iat[-1] = current_market_cap / ltm_equity
 
     # Income Statement
     metrics['Rev'] = data['revenue'] / 1_000_000
@@ -135,6 +136,10 @@ def grab_sf1_time_series_data(ticker):
     metrics['Op Marg'] = data['opinc'] / data['revenue']
     metrics['FCF Marg'] = data['fcf'] / data['revenue']
 
+    # Shareholder Yield
+    metrics['BB Yield'] = (data['sharesbas'].shift(1) - data['sharesbas']) / data['sharesbas'].shift(1)
+    metrics['Ins Buys'] = data['calendardate'].apply(count_insider_buys)
+
     # Balance Sheet
     metrics['Equity'] = data['equity'] / 1_000_000
     metrics['Debt'] = data['debt'] / 1_000_000
@@ -156,10 +161,6 @@ def grab_sf1_time_series_data(ticker):
     # Efficiency
     metrics['WC Turn'] = data['revenue'] / (data['assetsc'] - data['liabilitiesc'])
     metrics['Asset Turn'] = data['assetturnover']
-
-    # Shareholder Yield
-    metrics['BB Yield'] = (data['sharesbas'].shift(1) - data['sharesbas']) / data['sharesbas'].shift(1)
-    metrics['Ins Buys'] = data['calendardate'].apply(count_insider_buys)
 
     # Profitability
     metrics['ROA'] = data['roa']
@@ -262,13 +263,13 @@ def write_to_excel(sheet, metrics, start_row=4, start_col=5):
 
 
 def api_test():
-    data = grab_sf1_time_series_data('NVDA')
+    data = grab_time_series_data('NVDA')
     print(data)
 
 def main():
     spreadsheet_path = sys.argv[1]
     ticker = sys.argv[2]
-    metrics = grab_sf1_time_series_data(ticker)
+    metrics = grab_time_series_data(ticker)
 
     wb = xw.books.active
     sheet = wb.sheets.active
@@ -279,4 +280,4 @@ def main():
     header_cell.api.Font.Bold = True
 
 
-api_test()
+main()

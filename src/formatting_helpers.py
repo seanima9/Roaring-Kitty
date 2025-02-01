@@ -51,7 +51,7 @@ def format_metrics(range_obj, values, metric_name):
                 elif value >= 1.2:
                     cell.color = LIGHT_GREEN
                 elif value >= 0.8:
-                    cell.color = None
+                    continue
                 elif value >= 0.5:
                     cell.color = LIGHT_RED
                 else:
@@ -66,6 +66,30 @@ def format_metrics(range_obj, values, metric_name):
                     cell.color = LIGHT_GREEN
                 elif value >= 0.5:
                     cell.color = LIGHT_RED
+                else:
+                    cell.color = DARK_RED
+
+            elif metric_name == 'Ins Buys':
+                if value >= 10.0:
+                    cell.color = DARK_GREEN
+                elif value >= 6.0:
+                    cell.color = MED_GREEN
+                elif value >= 3.0:
+                    cell.color = LIGHT_GREEN
+
+            elif metric_name == 'BB Yield':
+                if value >= 0.05:
+                    cell.color = DARK_GREEN
+                elif value >= 0.02:
+                    cell.color = MED_GREEN
+                elif value >= 0.01:
+                    cell.color = LIGHT_GREEN
+                elif value >= 0.00:
+                    continue
+                elif value >= -0.02:
+                    cell.color = LIGHT_RED
+                elif value >= -0.04:
+                    cell.color = MED_RED
                 else:
                     cell.color = DARK_RED
             
