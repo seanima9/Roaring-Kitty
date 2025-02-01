@@ -82,30 +82,30 @@ def grab_time_series_data(ticker):
     sep_data = ndl.get_table('SHARADAR/SEP', ticker=ticker, paginate=True)
     sep_data['date'] = pd.to_datetime(sep_data['date'])
     latest_share_price = sep_data.sort_values('date').iloc[-1]['close']
-    current_shares_outstanding = data['sharesbas'].iloc[-1]
+    current_shares_outstanding = data['sharesbas'].iloc[-1] * data['sharefactor'].iloc[-1]
     current_market_cap = latest_share_price * current_shares_outstanding
 
     # Valuation Metrics
     metrics['TEV'] = data['ev'] / 1_000_000
     metrics['Mkt Cap'] = data['marketcap'] / 1_000_000
-    metrics['SP'] = latest_share_price
-    metrics['TEV/EBITDA'] = data['ev'] / data['ebitda']
-    metrics['TEV/Rev'] = data['ev'] / data['revenue']
-    metrics['TEV/FCF'] = data['ev'] / data['fcf']
-    metrics['P/E'] = data['pe']
-    metrics['P/B'] = data['pb']
-    metrics['EPS'] = data['eps']
+    metrics['TEV/EBITDA'] = data['ev'] / (data['ebitda'] / data['fxusd'])
+    metrics['TEV/Rev'] = data['ev'] / (data['revenue'] / data['fxusd'])
+    metrics['TEV/FCF'] = data['ev'] / (data['fcf'] / data['fxusd'])
+    metrics['P/E'] = data['marketcap'] / (data['netinc'] / data['fxusd'])
+    metrics['P/B'] = data['marketcap'] / ((data['equity']) / data['fxusd'])
+    metrics['EPS'] = data['eps'] / data['fxusd']
 
-    ltm_debt = data['debt'].iloc[-1]
-    ltm_cash = data['cashneq'].iloc[-1]
-    ltm_ebitda = data['ebitda'].iloc[-1]
-    ltm_revenue = data['revenue'].iloc[-1]
-    ltm_fcf = data['fcf'].iloc[-1]
-    ltm_netinc = data['netinc'].iloc[-1]
-    ltm_equity = data['equity'].iloc[-1]
+    ltm_debt = data['debt'].iloc[-1] / data['fxusd'].iloc[-1]
+    ltm_cash = data['cashneq'].iloc[-1] / data['fxusd'].iloc[-1]
+    ltm_ebitda = data['ebitda'].iloc[-1] / data['fxusd'].iloc[-1]
+    ltm_revenue = data['revenue'].iloc[-1] / data['fxusd'].iloc[-1]
+    ltm_fcf = data['fcf'].iloc[-1] / data['fxusd'].iloc[-1]
+    ltm_netinc = data['netinc'].iloc[-1] / data['fxusd'].iloc[-1]
+    ltm_equity = data['equity'].iloc[-1] / data['fxusd'].iloc[-1]
 
     new_ev = current_market_cap + ltm_debt - ltm_cash
 
+    # Keep up to date valuation metrics as market cap changes past latest earnings
     metrics['TEV'].iat[-1] = new_ev / 1_000_000
     metrics['Mkt Cap'].iat[-1] = current_market_cap / 1_000_000
     metrics['TEV/EBITDA'].iat[-1] = new_ev / ltm_ebitda
@@ -115,19 +115,19 @@ def grab_time_series_data(ticker):
     metrics['P/B'].iat[-1] = current_market_cap / ltm_equity
 
     # Income Statement
-    metrics['Rev'] = data['revenue'] / 1_000_000
-    metrics['Rev 3YCAGR'] = calculate_rolling_cagr(data['revenue'])
-    metrics['GP'] = data['gp'] / 1_000_000
-    metrics['Net Inc'] = data['netinc'] / 1_000_000
-    metrics['Op Inc'] = data['opinc'] / 1_000_000
-    metrics['EBITDA'] = data['ebitda'] / 1_000_000
+    metrics['Rev'] = (data['revenue'] / data['fxusd']) / 1_000_000
+    metrics['Rev 3YCAGR'] = calculate_rolling_cagr(data['revenue'] / data['fxusd'])
+    metrics['GP'] = (data['gp'] / data['fxusd']) / 1_000_000
+    metrics['Net Inc'] = (data['netinc'] / data['fxusd']) / 1_000_000
+    metrics['Op Inc'] = (data['opinc'] / data['fxusd']) / 1_000_000
+    metrics['EBITDA'] = (data['ebitda'] / data['fxusd']) / 1_000_000
 
     # Cash Flow
-    metrics['CFO'] = data['ncfo'] / 1_000_000
-    metrics['FCF'] = data['fcf'] / 1_000_000
-    metrics['Op Exp'] = data['opex'] / 1_000_000
-    metrics['CapEx'] = data['capex'] / 1_000_000
-    metrics['Int Exp'] = data['intexp'] / 1_000_000
+    metrics['CFO'] = (data['ncfo'] / data['fxusd']) / 1_000_000
+    metrics['FCF'] = (data['fcf'] / data['fxusd']) / 1_000_000
+    metrics['Op Exp'] = (data['opex'] / data['fxusd']) / 1_000_000
+    metrics['CapEx'] = (data['capex'] / data['fxusd']) / 1_000_000
+    metrics['Int Exp'] = (data['intexp'] / data['fxusd']) / 1_000_000
 
     # Margins
     metrics['GP Marg'] = data['grossmargin']
@@ -141,11 +141,11 @@ def grab_time_series_data(ticker):
     metrics['Ins Buys'] = data['calendardate'].apply(count_insider_buys)
 
     # Balance Sheet
-    metrics['Equity'] = data['equity'] / 1_000_000
-    metrics['Debt'] = data['debt'] / 1_000_000
-    metrics['Assets'] = data['assets'] / 1_000_000
-    metrics['Liab'] = data['liabilities'] / 1_000_000
-    metrics['TBV'] = (data['assets'] - data['intangibles'] - data['liabilities']) / 1_000_000
+    metrics['Equity'] = (data['equity'] / data['fxusd']) / 1_000_000
+    metrics['Debt'] = (data['debt'] / data['fxusd']) / 1_000_000
+    metrics['Assets'] = (data['assets'] / data['fxusd']) / 1_000_000
+    metrics['Liab'] = (data['liabilities'] / data['fxusd']) / 1_000_000
+    metrics['TBV'] = ((data['assets'] - data['intangibles'] - data['liabilities']) / data['fxusd']) / 1_000_000
 
     # Solvency
     metrics['D/E'] = data['debt'] / data['equity']
@@ -263,11 +263,11 @@ def write_to_excel(sheet, metrics, start_row=4, start_col=5):
 
 
 def api_test():
-    data = grab_time_series_data('NVDA')
+    data = grab_time_series_data('TSM')
     print(data)
 
 def main():
-    spreadsheet_path = sys.argv[1]
+    _ = sys.argv[1] # spreadsheet path
     ticker = sys.argv[2]
     metrics = grab_time_series_data(ticker)
 

@@ -86,22 +86,24 @@ def grab_data(tickers):
         sep_data = ndl.get_table('SHARADAR/SEP', ticker=ticker, paginate=True)
         sep_data['date'] = pd.to_datetime(sep_data['date'])
         latest_share_price = sep_data.sort_values('date').iloc[-1]['close']
-        current_shares_outstanding = data['sharesbas'].iloc[-1]
+        current_shares_outstanding = data['sharesbas'].iloc[-1] * data['sharefactor'].iloc[-1]
         current_market_cap = latest_share_price * current_shares_outstanding
 
-        new_ev = current_market_cap + ltm['debt'].iloc[0] - ltm['cashneq'].iloc[0]
+        fx_conv_ltm = ltm['fxusd'].iloc[0]
+        new_ev = current_market_cap + ((ltm['debt'].iloc[0] - ltm['cashneq'].iloc[0]) / fx_conv_ltm)
 
         # Valuation Metrics
         metrics['TEV'] = new_ev / 1_000_000
-        metrics['TEV/EBITDA'] = new_ev / ltm['ebitda'].iloc[0]
-        metrics['TEV/Rev'] = new_ev / ltm['revenue'].iloc[0]
-        metrics['TEV/FCF'] = new_ev / ltm['fcf'].iloc[0]
-        metrics['P/B'] = current_market_cap / ltm['equity'].iloc[0]
-        metrics['EPS'] = ltm['eps']
+        metrics['SP'] = latest_share_price
+        metrics['TEV/EBITDA'] = new_ev / (ltm['ebitda'].iloc[0] / fx_conv_ltm)
+        metrics['TEV/Rev'] = new_ev / (ltm['revenue'].iloc[0] / fx_conv_ltm)
+        metrics['TEV/FCF'] = new_ev / (ltm['fcf'].iloc[0] / fx_conv_ltm)
+        metrics['P/B'] = current_market_cap / (ltm['equity'].iloc[0] / fx_conv_ltm)
+        metrics['EPS'] = ltm['eps'] / fx_conv_ltm
 
         # Income Statement
-        metrics['Rev'] = ltm['revenue'] / 1_000_000
-        metrics['Rev 3YCAGR'] = calculate_cagr(data['revenue'].values)
+        metrics['Rev'] = (ltm['revenue'] / fx_conv_ltm) / 1_000_000
+        metrics['Rev 3YCAGR'] = calculate_cagr((data['revenue'] / data['fxusd']).values)
 
         # Margins
         metrics['GP Marg'] = ltm['grossmargin']
@@ -217,12 +219,12 @@ def write_to_excel(sheet, metrics_df, companies_dict, start_row=4, start_col=5):
 
 
 def api_test():
-    tickers = ['NVDA', 'AVGO', 'AMD']
+    tickers = ['NVDA', 'TSM', 'AMD']
     metrics = grab_data(tickers)
     print(metrics)
 
 def main():
-    spreadsheet_path = sys.argv[1]
+    _ = sys.argv[1] # spreadsheet path
     company_string = sys.argv[2]
     
     items = company_string.split(',')
