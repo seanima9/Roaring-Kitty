@@ -103,6 +103,7 @@ def grab_data(tickers):
         metrics['TEV/EBITDA'] = new_ev / (ltm_ebitda / fx_conv_ltm)
         metrics['TEV/Rev'] = new_ev / (ltm['revenue'].iloc[0] / fx_conv_ltm)
         metrics['TEV/FCF'] = new_ev / (ltm['fcf'].iloc[0] / fx_conv_ltm)
+        metrics['P/E'] = current_market_cap / (ltm['netinc'].iloc[0] / fx_conv_ltm)
         metrics['P/B'] = current_market_cap / (ltm['equity'].iloc[0] / fx_conv_ltm)
         metrics['EPS'] = ltm['eps'] / fx_conv_ltm
 
@@ -118,6 +119,7 @@ def grab_data(tickers):
         metrics['FCF Marg'] = ltm['fcf'] / ltm['revenue']
 
         # Shareholder Yield
+        metrics['Div Yield'] = data['divyield']
         metrics['BB Yield'] = bb_yield
         metrics['Ins Buys'] = insider_buys_count
 

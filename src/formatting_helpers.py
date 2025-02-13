@@ -38,7 +38,7 @@ def calculate_percentiles(values):
 
 def format_metrics(range_obj, values, metric_name):
     good_high = ['EPS', 'Rev 3YCAGR', 'GP Marg', 'EBITDA Marg', 'Net Marg', 'Op Marg', 'FCF Marg',
-                    'Cash Ratio', 'Cash/Debt', 'WC Turn', 'Asset Turn', 'ROA', 'ROE', 'ROIC']
+                    'Cash Ratio', 'Cash/Debt', 'WC Turn', 'Asset Turn', 'ROA', 'ROE', 'ROIC', 'Net Cash']
     good_low = ['TEV/Rev', 'D/E', 'Debt/EBITDA']
 
     for cell, value in zip(range_obj, values):

@@ -141,6 +141,7 @@ def grab_time_series_data(ticker):
     metrics['FCF Marg'] = data['fcf'] / data['revenue']
 
     # Shareholder Yield
+    metrics['Div Yield'] = data['divyield']
     metrics['BB Yield'] = (data['sharesbas'].shift(1) - data['sharesbas']) / data['sharesbas'].shift(1)
     metrics['Ins Buys'] = data['calendardate'].apply(count_insider_buys)
 
@@ -149,6 +150,8 @@ def grab_time_series_data(ticker):
     metrics['Debt'] = (data['debt'] / data['fxusd']) / 1_000_000
     metrics['Assets'] = (data['assets'] / data['fxusd']) / 1_000_000
     metrics['Liab'] = (data['liabilities'] / data['fxusd']) / 1_000_000
+    metrics['Cash & ST Investments'] = (data['cashneq'] + data['investmentsc']) / 1_000_000
+    metrics['Net Cash'] = (data['cashneq'] + data['investmentsc'] - data['debt']) / 1_000_000
     metrics['TBV'] = ((data['assets'] - data['intangibles'] - data['liabilities']) / data['fxusd']) / 1_000_000
 
     # Solvency
@@ -190,6 +193,52 @@ def apply_conditional_formatting(sheet, metrics_df, start_row, start_col):
                                (current_row, start_col + 2 + len(row_values) - 1))
         
         format_metrics(data_range, row_values, metric_name)
+
+
+def write_dcf_to_excel(sheet, start_col, fcf_row_num, years):
+    dcf_start_row = 10
+    dcf_start_col = start_col + len(years) + 3
+
+    sheet.cells(dcf_start_row, dcf_start_col + 1).value = "DF"
+    sheet.cells(dcf_start_row, dcf_start_col + 2).value = "10Y GR"
+    sheet.cells(dcf_start_row, dcf_start_col + 3).value = "Perp GR"
+
+    sheet.cells(dcf_start_row + 1, dcf_start_col + 1).value = 0.1
+    sheet.cells(dcf_start_row + 1, dcf_start_col + 2).value = 1.1
+    sheet.cells(dcf_start_row + 1, dcf_start_col + 3).value = 1.03
+
+    if fcf_row_num:
+        discount_factor_cell = sheet.cells(dcf_start_row + 1, dcf_start_col + 1).address
+        gr_10y_cell = sheet.cells(dcf_start_row + 1, dcf_start_col + 2).address
+        perp_gr_cell = sheet.cells(dcf_start_row + 1, dcf_start_col + 3).address
+
+        # 10Y FCF Extrapolation
+        for i in range(10):
+            current_col = dcf_start_col + i
+            prev_col_addr = sheet.cells(fcf_row_num, current_col - 1).address
+            formula = f"={prev_col_addr}*({gr_10y_cell})"
+            sheet.cells(fcf_row_num, current_col).formula = formula
+
+        # 40Y Perpetual Growth FCF Extrapolation
+        for i in range(40):
+            current_col = dcf_start_col + 10 + i
+            prev_col_addr = sheet.cells(fcf_row_num, current_col - 1).address
+            formula = f"={prev_col_addr}*({perp_gr_cell})"
+            sheet.cells(fcf_row_num, current_col).formula = formula
+
+        # DCF Calculation
+        dcf_label_cell = sheet.cells(fcf_row_num + 2, dcf_start_col + 1)
+        dcf_value_cell = sheet.cells(fcf_row_num + 3, dcf_start_col + 1)
+
+        dcf_label_cell.value = "NPV"
+
+        # Construct NPV formula
+        npv_start_cell = sheet.cells(fcf_row_num, dcf_start_col).address
+        npv_end_cell = sheet.cells(fcf_row_num, dcf_start_col + 49).address
+
+        npv_formula = f"=NPV({discount_factor_cell}, {npv_start_cell}:{npv_end_cell})"
+        dcf_value_cell.formula = npv_formula
+        sheet.api.Columns(dcf_start_col + 1).AutoFit()
 
 
 def write_to_excel(sheet, metrics, start_row=4, start_col=5):
@@ -264,6 +313,13 @@ def write_to_excel(sheet, metrics, start_row=4, start_col=5):
         sheet.api.Columns(col).AutoFit()
 
     apply_conditional_formatting(sheet, metrics, start_row, start_col)
+
+    fcf_row_num = None
+    for i in range(start_row + 1, current_row):
+        if sheet.cells(i, start_col + 1).value == 'FCF':
+            fcf_row_num = i
+            break
+    write_dcf_to_excel(sheet, start_col, fcf_row_num, years)
 
 
 def api_test():

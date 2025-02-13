@@ -48,6 +48,7 @@
     {
       "name": "Shareholder Yield",
       "metrics": {
+        "Div Yield": "Dividend Yield",
         "BB Yield": "Buyback Yield, (Net Shares Repurchased / Total Shares Outstanding)",
         "Ins Buys": "Total Shares Purchased by Insiders"
       }
@@ -59,6 +60,8 @@
         "Debt": "Short-Term Debt + Long-Term Debt",
         "Assets": "Sum of All Assets",
         "Liab": "Sum of All Liabilities",
+        "Cash & ST Investments": "Cash + Short-Term Investments",
+        "Net Cash": "Cash + Short-Term Investments - Debt",
         "TBV": "Total Assets - Intangible Assets - Total Liabilities"
       }
     },
