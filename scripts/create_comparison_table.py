@@ -166,6 +166,11 @@ def apply_conditional_formatting(sheet, metrics_df, start_row, start_col):
 
 
 def write_to_excel(sheet, metrics_df, companies_dict, start_row=4, start_col=5):
+    sheet.range((1, 1), (1, sheet.api.Columns.Count)).color = (146, 208, 80)
+
+    sheet.range((2, 1), (3, sheet.api.Columns.Count)).api.Style = "Border Shaded"
+    sheet.range((2, 1), (3, sheet.api.Columns.Count)).color = (208, 208, 208)
+    
     sheet.cells(start_row, start_col).value = "Ticker"
     sheet.cells(start_row, start_col + 1).value = "Sector"
     

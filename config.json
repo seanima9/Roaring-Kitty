@@ -60,7 +60,7 @@
         "Debt": "Short-Term Debt + Long-Term Debt",
         "Assets": "Sum of All Assets",
         "Liab": "Sum of All Liabilities",
-        "Cash & ST Investments": "Cash + Short-Term Investments",
+        "Cash & ST Inv": "Cash + Short-Term Investments",
         "Net Cash": "Cash + Short-Term Investments - Debt",
         "TBV": "Total Assets - Intangible Assets - Total Liabilities"
       }

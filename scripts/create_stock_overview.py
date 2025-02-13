@@ -150,7 +150,7 @@ def grab_time_series_data(ticker):
     metrics['Debt'] = (data['debt'] / data['fxusd']) / 1_000_000
     metrics['Assets'] = (data['assets'] / data['fxusd']) / 1_000_000
     metrics['Liab'] = (data['liabilities'] / data['fxusd']) / 1_000_000
-    metrics['Cash & ST Investments'] = (data['cashneq'] + data['investmentsc']) / 1_000_000
+    metrics['Cash & ST Inv'] = (data['cashneq'] + data['investmentsc']) / 1_000_000
     metrics['Net Cash'] = (data['cashneq'] + data['investmentsc'] - data['debt']) / 1_000_000
     metrics['TBV'] = ((data['assets'] - data['intangibles'] - data['liabilities']) / data['fxusd']) / 1_000_000
 
@@ -207,6 +207,15 @@ def write_dcf_to_excel(sheet, start_col, fcf_row_num, years):
     sheet.cells(dcf_start_row + 1, dcf_start_col + 2).value = 1.1
     sheet.cells(dcf_start_row + 1, dcf_start_col + 3).value = 1.03
 
+    sheet.range((dcf_start_row, dcf_start_col + 1), (dcf_start_row + 1, dcf_start_col + 1)).api.Style = "Border Shaded"
+    sheet.range((dcf_start_row, dcf_start_col + 1), (dcf_start_row + 1, dcf_start_col + 1)).color = (255, 116, 116)
+
+    sheet.range((dcf_start_row, dcf_start_col + 2), (dcf_start_row + 1, dcf_start_col + 2)).api.Style = "Border Shaded"
+    sheet.range((dcf_start_row, dcf_start_col + 2), (dcf_start_row + 1, dcf_start_col + 2)).color = (146, 208, 80)
+
+    sheet.range((dcf_start_row, dcf_start_col + 3), (dcf_start_row + 1, dcf_start_col + 3)).api.Style = "Border Shaded"
+    sheet.range((dcf_start_row, dcf_start_col + 3), (dcf_start_row + 1, dcf_start_col + 3)).color = (255, 255, 0)
+
     if fcf_row_num:
         discount_factor_cell = sheet.cells(dcf_start_row + 1, dcf_start_col + 1).address
         gr_10y_cell = sheet.cells(dcf_start_row + 1, dcf_start_col + 2).address
@@ -238,6 +247,7 @@ def write_dcf_to_excel(sheet, start_col, fcf_row_num, years):
 
         npv_formula = f"=NPV({discount_factor_cell}, {npv_start_cell}:{npv_end_cell})"
         dcf_value_cell.formula = npv_formula
+        sheet.range((fcf_row_num + 2, dcf_start_col + 1), (fcf_row_num + 3, dcf_start_col + 1)).color = (77, 147, 217)
         sheet.api.Columns(dcf_start_col + 1).AutoFit()
 
 
@@ -313,6 +323,11 @@ def write_to_excel(sheet, metrics, start_row=4, start_col=5):
         sheet.api.Columns(col).AutoFit()
 
     apply_conditional_formatting(sheet, metrics, start_row, start_col)
+
+    sheet.range((1, 1), (1, sheet.api.Columns.Count)).color = (146, 208, 80)
+
+    sheet.range((2, 1), (3, sheet.api.Columns.Count)).api.Style = "Border Shaded"
+    sheet.range((2, 1), (3, sheet.api.Columns.Count)).color = (208, 208, 208)
 
     fcf_row_num = None
     for i in range(start_row + 1, current_row):
