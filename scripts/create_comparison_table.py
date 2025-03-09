@@ -166,10 +166,9 @@ def apply_conditional_formatting(sheet, metrics_df, start_row, start_col):
 
 
 def write_to_excel(sheet, metrics_df, companies_dict, start_row=4, start_col=5):
-    sheet.range((1, 1), (1, sheet.api.Columns.Count)).color = (146, 208, 80)
+    sheet.range((1, 1), (1, sheet.api.Columns.Count)).color = (255, 192, 0)
 
-    sheet.range((2, 1), (3, sheet.api.Columns.Count)).api.Style = "Border Shaded"
-    sheet.range((2, 1), (3, sheet.api.Columns.Count)).color = (208, 208, 208)
+    sheet.range((2, 1), (3, sheet.api.Columns.Count)).color = (191, 191, 191)
     
     sheet.cells(start_row, start_col).value = "Ticker"
     sheet.cells(start_row, start_col + 1).value = "Sector"
@@ -260,8 +259,9 @@ def main():
     write_to_excel(sheet, metrics, companies_dict, start_row=4, start_col=5)
     header_cell = sheet.cells(1, 5)
     header_cell.value = "RK Tracker"
-    header_cell.api.Font.Size = 36
+    header_cell.api.Font.Size = 28
     header_cell.api.Font.Bold = True
+    header_cell.api.Font.Italic = True
 
 
 main()

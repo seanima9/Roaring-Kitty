@@ -207,13 +207,8 @@ def write_dcf_to_excel(sheet, start_col, fcf_row_num, years):
     sheet.cells(dcf_start_row + 1, dcf_start_col + 2).value = 1.1
     sheet.cells(dcf_start_row + 1, dcf_start_col + 3).value = 1.03
 
-    sheet.range((dcf_start_row, dcf_start_col + 1), (dcf_start_row + 1, dcf_start_col + 1)).api.Style = "Border Shaded"
     sheet.range((dcf_start_row, dcf_start_col + 1), (dcf_start_row + 1, dcf_start_col + 1)).color = (255, 116, 116)
-
-    sheet.range((dcf_start_row, dcf_start_col + 2), (dcf_start_row + 1, dcf_start_col + 2)).api.Style = "Border Shaded"
     sheet.range((dcf_start_row, dcf_start_col + 2), (dcf_start_row + 1, dcf_start_col + 2)).color = (146, 208, 80)
-
-    sheet.range((dcf_start_row, dcf_start_col + 3), (dcf_start_row + 1, dcf_start_col + 3)).api.Style = "Border Shaded"
     sheet.range((dcf_start_row, dcf_start_col + 3), (dcf_start_row + 1, dcf_start_col + 3)).color = (255, 255, 0)
 
     if fcf_row_num:
@@ -324,10 +319,9 @@ def write_to_excel(sheet, metrics, start_row=4, start_col=5):
 
     apply_conditional_formatting(sheet, metrics, start_row, start_col)
 
-    sheet.range((1, 1), (1, sheet.api.Columns.Count)).color = (146, 208, 80)
+    sheet.range((1, 1), (1, sheet.api.Columns.Count)).color = (255, 192, 0)
 
-    sheet.range((2, 1), (3, sheet.api.Columns.Count)).api.Style = "Border Shaded"
-    sheet.range((2, 1), (3, sheet.api.Columns.Count)).color = (208, 208, 208)
+    sheet.range((2, 1), (3, sheet.api.Columns.Count)).color = (191, 191, 191)
 
     fcf_row_num = None
     for i in range(start_row + 1, current_row):
@@ -351,8 +345,9 @@ def main():
     write_to_excel(sheet, metrics, start_row=4, start_col=5)
     header_cell = sheet.cells(1, 5)
     header_cell.value = f"{ticker} Overview"
-    header_cell.api.Font.Size = 36
+    header_cell.api.Font.Size = 28
     header_cell.api.Font.Bold = True
+    header_cell.api.Font.Italic = True
 
 
 main()
