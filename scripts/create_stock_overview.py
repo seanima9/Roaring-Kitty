@@ -102,7 +102,7 @@ def grab_time_series_data(ticker):
     ltm_netinc = data['netinc'].iloc[-1] / data['fxusd'].iloc[-1]
     ltm_equity = data['equity'].iloc[-1] / data['fxusd'].iloc[-1]
 
-    if np.isnan(data['ebitda'].iloc[-1]): # LTM EBIDTA is nan for Chinese stocks
+    if np.isnan(data['ebitda'].iloc[-1]): # LTM EBITDA is nan for Chinese stocks
         ltm_ebitda = data['ebitda'].iloc[-2] / data['fxusd'].iloc[-1]
     else:
         ltm_ebitda = data['ebitda'].iloc[-1] / data['fxusd'].iloc[-1]
@@ -222,6 +222,7 @@ def write_dcf_to_excel(sheet, start_col, fcf_row_num, years):
             prev_col_addr = sheet.cells(fcf_row_num, current_col - 1).address
             formula = f"={prev_col_addr}*({gr_10y_cell})"
             sheet.cells(fcf_row_num, current_col).formula = formula
+            sheet.cells(fcf_row_num, current_col).api.NumberFormat = "#,##0"
 
         # 40Y Perpetual Growth FCF Extrapolation
         for i in range(40):
@@ -229,6 +230,7 @@ def write_dcf_to_excel(sheet, start_col, fcf_row_num, years):
             prev_col_addr = sheet.cells(fcf_row_num, current_col - 1).address
             formula = f"={prev_col_addr}*({perp_gr_cell})"
             sheet.cells(fcf_row_num, current_col).formula = formula
+            sheet.cells(fcf_row_num, current_col).api.NumberFormat = "#,##0"
 
         # DCF Calculation
         dcf_label_cell = sheet.cells(fcf_row_num + 2, dcf_start_col + 1)
@@ -242,6 +244,7 @@ def write_dcf_to_excel(sheet, start_col, fcf_row_num, years):
 
         npv_formula = f"=NPV({discount_factor_cell}, {npv_start_cell}:{npv_end_cell})"
         dcf_value_cell.formula = npv_formula
+        dcf_value_cell.api.NumberFormat = "#,##0"
         sheet.range((fcf_row_num + 2, dcf_start_col + 1), (fcf_row_num + 3, dcf_start_col + 1)).color = (77, 147, 217)
         sheet.api.Columns(dcf_start_col + 1).AutoFit()
 
@@ -285,10 +288,14 @@ def write_to_excel(sheet, metrics, start_row=4, start_col=5):
                     cell = sheet.cells(current_row, col_num)
                     cell.value = value
                     
-                    if 'CAGR' in metric_name or 'Yield' in metric_name:
+                    # Apply formatting based on metric type
+                    if 'Marg' in metric_name or 'Yield' in metric_name or 'CAGR' in metric_name:
                         cell.api.NumberFormat = "0.0%"
-                    elif isinstance(value, (int, float)) and abs(value) >= 1000:
-                        cell.api.NumberFormat = "#,##0.00"
+                    elif 'Ratio' in metric_name or '/' in metric_name or \
+                        metric_name in ['ROA', 'ROE', 'ROIC', 'WC Turn', 'Asset Turn', 'EPS']:
+                        cell.api.NumberFormat = "0.00"
+                    elif isinstance(value, (int, float)):
+                        cell.api.NumberFormat = "#,##0"
                     
                 current_row += 1
 
@@ -300,8 +307,8 @@ def write_to_excel(sheet, metrics, start_row=4, start_col=5):
             border_range.api.Borders(9).Weight = 2
 
     table_range = sheet.range(
-    sheet.cells(start_row, start_col),
-    sheet.cells(current_row - 1, start_col + len(years) + 2)
+        sheet.cells(start_row, start_col),
+        sheet.cells(current_row - 1, start_col + len(years) + 2)
     )
 
     for i, row in enumerate(table_range.rows):
@@ -319,9 +326,9 @@ def write_to_excel(sheet, metrics, start_row=4, start_col=5):
 
     apply_conditional_formatting(sheet, metrics, start_row, start_col)
 
-    sheet.range((1, 1), (1, sheet.api.Columns.Count)).color = (255, 192, 0)
+    sheet.range((1, 1), (1, sheet.api.Columns.Count)).color = (185, 216, 72)
 
-    sheet.range((2, 1), (3, sheet.api.Columns.Count)).color = (191, 191, 191)
+    sheet.range((2, 1), (3, sheet.api.Columns.Count)).color = (0, 201, 192)
 
     fcf_row_num = None
     for i in range(start_row + 1, current_row):
@@ -345,9 +352,7 @@ def main():
     write_to_excel(sheet, metrics, start_row=4, start_col=5)
     header_cell = sheet.cells(1, 5)
     header_cell.value = f"{ticker} Overview"
-    header_cell.api.Font.Size = 28
-    header_cell.api.Font.Bold = True
-    header_cell.api.Font.Italic = True
+    header_cell.api.Font.Size = 20
 
 
 main()

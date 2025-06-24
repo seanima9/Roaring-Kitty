@@ -92,7 +92,7 @@ def grab_data(tickers):
         fx_conv_ltm = ltm['fxusd'].iloc[0]
         new_ev = current_market_cap + ((ltm['debt'].iloc[0] - ltm['cashneq'].iloc[0]) / fx_conv_ltm)
 
-        if np.isnan(data['ebitda'].iloc[-1]): # LTM EBIDTA is nan for Chinese stocks
+        if np.isnan(data['ebitda'].iloc[-1]): # LTM EBITDA is nan for Chinese stocks
             ltm_ebitda = data['ebitda'].iloc[-2]
         else:
             ltm_ebitda = data['ebitda'].iloc[-1]
@@ -166,9 +166,8 @@ def apply_conditional_formatting(sheet, metrics_df, start_row, start_col):
 
 
 def write_to_excel(sheet, metrics_df, companies_dict, start_row=4, start_col=5):
-    sheet.range((1, 1), (1, sheet.api.Columns.Count)).color = (255, 192, 0)
-
-    sheet.range((2, 1), (3, sheet.api.Columns.Count)).color = (191, 191, 191)
+    sheet.range((1, 1), (1, sheet.api.Columns.Count)).color = (185, 216, 72)
+    sheet.range((2, 1), (3, sheet.api.Columns.Count)).color = (0, 201, 192)
     
     sheet.cells(start_row, start_col).value = "Ticker"
     sheet.cells(start_row, start_col + 1).value = "Sector"
@@ -203,10 +202,15 @@ def write_to_excel(sheet, metrics_df, companies_dict, start_row=4, start_col=5):
                     cell.value = value
 
                     metric_name = metrics_df.columns[col_num - (start_col + 2)]
-                    if 'CAGR' in metric_name or 'Yield' in metric_name:
+                    
+                    # Apply formatting based on metric type
+                    if 'Marg' in metric_name or 'Yield' in metric_name or 'CAGR' in metric_name:
                         cell.api.NumberFormat = "0.0%"
-                    elif isinstance(value, (int, float)) and abs(value) >= 1000:
-                        cell.api.NumberFormat = "#,##0.00"
+                    elif 'Ratio' in metric_name or '/' in metric_name or \
+                    metric_name in ['ROA', 'ROE', 'ROIC', 'WC Turn', 'Asset Turn', 'EPS', 'SP']:
+                        cell.api.NumberFormat = "0.00"
+                    elif isinstance(value, (int, float)):
+                        cell.api.NumberFormat = "#,##0"
 
             current_row += 1
 
@@ -259,9 +263,7 @@ def main():
     write_to_excel(sheet, metrics, companies_dict, start_row=4, start_col=5)
     header_cell = sheet.cells(1, 5)
     header_cell.value = "RK Tracker"
-    header_cell.api.Font.Size = 28
-    header_cell.api.Font.Bold = True
-    header_cell.api.Font.Italic = True
+    header_cell.api.Font.Size = 20
 
 
 main()
