@@ -1,3 +1,4 @@
 pandas
 nasdaq-data-link
 xlwings
+yfinance

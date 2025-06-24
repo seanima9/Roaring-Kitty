@@ -1,10 +1,11 @@
 import sys
 import os
+import json
 import numpy as np
 import pandas as pd
 import nasdaqdatalink as ndl
 import xlwings as xw
-import json
+import yfinance as yf
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
@@ -32,8 +33,9 @@ MED_RED = COLORS['MED_RED']
 LIGHT_RED = COLORS['LIGHT_RED']
 YELLOW = COLORS['YELLOW']
 
-ndl.ApiConfig.api_key = API_KEY
+MARKET_RETURN = 0.08
 
+ndl.ApiConfig.api_key = API_KEY
 
 def calculate_rolling_cagr(values):
     cagr = pd.Series(index=values.index)
@@ -44,6 +46,32 @@ def calculate_rolling_cagr(values):
         cagr.iloc[i] = (end_value / start_value) ** (1/3) - 1
                 
     return cagr
+
+
+def fetch_beta_and_rf(ticker):
+    stock = yf.Ticker(ticker)
+    beta = stock.info.get('beta', 1.0)
+    treasury = yf.Ticker('^TNX')  # 10Y Treasury yield
+    rf = treasury.history(period='1d')['Close'].iloc[-1] / 100
+
+    if np.isnan(beta) or np.isnan(rf):
+        raise ValueError(f"Failed to fetch beta or risk-free rate for {ticker}")
+    
+    return beta, rf
+
+
+def compute_wacc(market_cap, debt, interest_exp, tax_exp, ebt, ticker):
+    beta, rf = fetch_beta_and_rf(ticker)
+    cost_of_equity = rf + beta * (MARKET_RETURN - rf)
+    cost_of_debt = 0.0 if debt == 0 else interest_exp / debt
+
+    tax_rate = 0.0 if ebt == 0 else tax_exp / ebt
+    total_capital = market_cap + debt
+    weight_equity = market_cap / total_capital
+    weight_debt = debt / total_capital
+
+    return (weight_equity * cost_of_equity) + (weight_debt * cost_of_debt * (1 - tax_rate))
+
 
 def grab_time_series_data(ticker):
     metrics = {}
@@ -101,6 +129,10 @@ def grab_time_series_data(ticker):
     ltm_fcf = data['fcf'].iloc[-1] / data['fxusd'].iloc[-1]
     ltm_netinc = data['netinc'].iloc[-1] / data['fxusd'].iloc[-1]
     ltm_equity = data['equity'].iloc[-1] / data['fxusd'].iloc[-1]
+
+    ltm_interest_exp = data['intexp'].iloc[-1] / data['fxusd'].iloc[-1]
+    ltm_tax_exp = data['taxexp'].iloc[-1] / data['fxusd'].iloc[-1]
+    ltm_ebt = data['ebt'].iloc[-1] / data['fxusd'].iloc[-1]
 
     if np.isnan(data['ebitda'].iloc[-1]): # LTM EBITDA is nan for Chinese stocks
         ltm_ebitda = data['ebitda'].iloc[-2] / data['fxusd'].iloc[-1]
@@ -177,8 +209,17 @@ def grab_time_series_data(ticker):
     metrics_df = pd.DataFrame(metrics)
     metrics_df = metrics_df.replace([np.inf, -np.inf], np.nan)
     metrics_df.index = data['year']
-    
-    return metrics_df.round(2)
+
+    wacc = compute_wacc(
+        market_cap=current_market_cap,
+        debt=ltm_debt,
+        interest_exp=ltm_interest_exp,
+        tax_exp=ltm_tax_exp,
+        ebt=ltm_ebt,
+        ticker=ticker
+    )
+
+    return metrics_df.round(2), wacc
 
 
 def apply_conditional_formatting(sheet, metrics_df, start_row, start_col):
@@ -195,7 +236,7 @@ def apply_conditional_formatting(sheet, metrics_df, start_row, start_col):
         format_metrics(data_range, row_values, metric_name)
 
 
-def write_dcf_to_excel(sheet, start_col, fcf_row_num, years):
+def write_dcf_to_excel(sheet, start_col, wacc, fcf_row_num, years):
     dcf_start_row = 10
     dcf_start_col = start_col + len(years) + 3
 
@@ -203,7 +244,9 @@ def write_dcf_to_excel(sheet, start_col, fcf_row_num, years):
     sheet.cells(dcf_start_row, dcf_start_col + 2).value = "10Y GR"
     sheet.cells(dcf_start_row, dcf_start_col + 3).value = "Perp GR"
 
-    sheet.cells(dcf_start_row + 1, dcf_start_col + 1).value = 0.1
+    wacc_cell = sheet.cells(dcf_start_row + 1, dcf_start_col + 1)
+    wacc_cell.value = wacc
+    wacc_cell.api.NumberFormat = "0.0000"
     sheet.cells(dcf_start_row + 1, dcf_start_col + 2).value = 1.1
     sheet.cells(dcf_start_row + 1, dcf_start_col + 3).value = 1.03
 
@@ -249,7 +292,7 @@ def write_dcf_to_excel(sheet, start_col, fcf_row_num, years):
         sheet.api.Columns(dcf_start_col + 1).AutoFit()
 
 
-def write_to_excel(sheet, metrics, start_row=4, start_col=5):
+def write_to_excel(sheet, metrics, wacc, start_row=4, start_col=5):
     years = sorted([idx for idx in metrics.index if idx != 'LTM'])
     max_years_for_data = 15
     if len(years) > max_years_for_data:
@@ -290,7 +333,7 @@ def write_to_excel(sheet, metrics, start_row=4, start_col=5):
                     
                     # Apply formatting based on metric type
                     if 'Marg' in metric_name or 'Yield' in metric_name or 'CAGR' in metric_name:
-                        cell.api.NumberFormat = "0.0%"
+                        cell.api.NumberFormat = "0%"
                     elif 'Ratio' in metric_name or '/' in metric_name or \
                         metric_name in ['ROA', 'ROE', 'ROIC', 'WC Turn', 'Asset Turn', 'EPS']:
                         cell.api.NumberFormat = "0.00"
@@ -335,21 +378,22 @@ def write_to_excel(sheet, metrics, start_row=4, start_col=5):
         if sheet.cells(i, start_col + 1).value == 'FCF':
             fcf_row_num = i
             break
-    write_dcf_to_excel(sheet, start_col, fcf_row_num, years)
+    write_dcf_to_excel(sheet, start_col, wacc, fcf_row_num, years)
 
 
 def api_test():
-    data = grab_time_series_data('BABA')
+    data, wacc = grab_time_series_data('BABA')
     print(data)
+    print(f"WACC: {wacc:.2%}")
 
 def main():
     _ = sys.argv[1] # spreadsheet path
     ticker = sys.argv[2]
-    metrics = grab_time_series_data(ticker)
+    metrics, wacc = grab_time_series_data(ticker)
 
     wb = xw.books.active
     sheet = wb.sheets.active
-    write_to_excel(sheet, metrics, start_row=4, start_col=5)
+    write_to_excel(sheet, metrics, wacc, start_row=4, start_col=5)
     header_cell = sheet.cells(1, 5)
     header_cell.value = f"{ticker} Overview"
     header_cell.api.Font.Size = 20

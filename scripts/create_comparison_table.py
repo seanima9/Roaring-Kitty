@@ -205,7 +205,7 @@ def write_to_excel(sheet, metrics_df, companies_dict, start_row=4, start_col=5):
                     
                     # Apply formatting based on metric type
                     if 'Marg' in metric_name or 'Yield' in metric_name or 'CAGR' in metric_name:
-                        cell.api.NumberFormat = "0.0%"
+                        cell.api.NumberFormat = "0%"
                     elif 'Ratio' in metric_name or '/' in metric_name or \
                     metric_name in ['ROA', 'ROE', 'ROIC', 'WC Turn', 'Asset Turn', 'EPS', 'SP']:
                         cell.api.NumberFormat = "0.00"
