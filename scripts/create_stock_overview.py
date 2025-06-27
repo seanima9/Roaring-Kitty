@@ -73,7 +73,11 @@ def compute_wacc(market_cap, debt, interest_exp, tax_exp, ebt, ticker):
     return (weight_equity * cost_of_equity) + (weight_debt * cost_of_debt * (1 - tax_rate))
 
 
-def grab_time_series_data(ticker):
+def grab_fundamental_data(ticker):
+    """
+    Fetches and calculates comprehensive fundamental analysis metrics for a given ticker.
+    Returns historical financial metrics across multiple periods for analysis.
+    """
     metrics = {}
     data = ndl.get_table('SHARADAR/SF1', ticker=ticker, paginate=True)
 
@@ -158,6 +162,18 @@ def grab_time_series_data(ticker):
     metrics['Op Inc'] = (data['opinc'] / data['fxusd']) / 1_000_000
     metrics['EBITDA'] = (data['ebitda'] / data['fxusd']) / 1_000_000
 
+    # Operating Expense Detail
+    metrics['R&D'] = (data['rnd'] / data['fxusd']) / 1_000_000
+    metrics['SG&A'] = (data['sgna'] / data['fxusd']) / 1_000_000
+    metrics['D&A'] = (data['depamor'] / data['fxusd']) / 1_000_000
+    metrics['SBC'] = (data['sbcomp'] / data['fxusd']) / 1_000_000
+
+    # Operating Expense Ratios (with validation)
+    safe_revenue = data['revenue'].replace(0, np.nan)
+    metrics['R&D/Rev'] = data['rnd'] / safe_revenue
+    metrics['SG&A/Rev'] = data['sgna'] / safe_revenue
+    metrics['SBC/Rev'] = data['sbcomp'] / safe_revenue
+
     # Cash Flow
     metrics['CFO'] = (data['ncfo'] / data['fxusd']) / 1_000_000
     metrics['FCF'] = (data['fcf'] / data['fxusd']) / 1_000_000
@@ -165,12 +181,22 @@ def grab_time_series_data(ticker):
     metrics['CapEx'] = (data['capex'] / data['fxusd']) / 1_000_000
     metrics['Int Exp'] = (data['intexp'] / data['fxusd']) / 1_000_000
 
+    # Cash Flow Analysis (with validation)
+    safe_netinc = data['netinc'].replace(0, np.nan)
+    metrics['NI to CFO'] = data['ncfo'] / safe_netinc
+    metrics['SBC Add-back'] = (data['sbcomp'] / data['fxusd']) / 1_000_000
+    
+    # Calculate working capital change
+    current_wc = (data['assetsc'] - data['liabilitiesc']) / data['fxusd']
+    prev_wc = current_wc.shift(1)
+    metrics['WC Change'] = (prev_wc - current_wc) / 1_000_000  # Negative means cash outflow
+
     # Margins
     metrics['GP Marg'] = data['grossmargin']
     metrics['EBITDA Marg'] = data['ebitdamargin']
     metrics['Net Marg'] = data['netmargin']
-    metrics['Op Marg'] = data['opinc'] / data['revenue']
-    metrics['FCF Marg'] = data['fcf'] / data['revenue']
+    metrics['Op Marg'] = data['opinc'] / safe_revenue
+    metrics['FCF Marg'] = data['fcf'] / safe_revenue
 
     # Shareholder Yield
     metrics['Div Yield'] = data['divyield']
@@ -186,6 +212,24 @@ def grab_time_series_data(ticker):
     metrics['Net Cash'] = (data['cashneq'] + data['investmentsc'] - data['debt']) / 1_000_000
     metrics['TBV'] = ((data['assets'] - data['intangibles'] - data['liabilities']) / data['fxusd']) / 1_000_000
 
+    # Asset Quality
+    metrics['Receivables'] = (data['receivables'] / data['fxusd']) / 1_000_000
+    metrics['Inventory'] = (data['inventory'] / data['fxusd']) / 1_000_000
+    metrics['PPE Net'] = (data['ppnenet'] / data['fxusd']) / 1_000_000
+    metrics['Intangibles'] = (data['intangibles'] / data['fxusd']) / 1_000_000
+    metrics['Payables'] = (data['payables'] / data['fxusd']) / 1_000_000
+    metrics['Def Revenue'] = (data['deferredrev'] / data['fxusd']) / 1_000_000
+
+    # Working Capital Analysis (with data validation)
+    safe_cor = data['cor'].replace(0, np.nan)
+    safe_receivables = data['receivables'].replace(0, np.nan)
+    safe_inventory = data['inventory'].replace(0, np.nan)
+
+    metrics['DSO'] = (data['receivables'] / safe_revenue) * 365  # Days Sales Outstanding
+    metrics['DIO'] = (data['inventory'] / safe_cor) * 365  # Days Inventory Outstanding
+    metrics['DPO'] = (data['payables'] / safe_cor) * 365  # Days Payable Outstanding
+    metrics['Cash Cycle'] = metrics['DSO'] + metrics['DIO'] - metrics['DPO']
+
     # Solvency
     metrics['D/E'] = data['debt'] / data['equity']
     metrics['Debt/EBITDA'] = data['debt'] / data['ebitda']
@@ -197,17 +241,43 @@ def grab_time_series_data(ticker):
     metrics['Curr Ratio'] = data['currentratio']
     metrics['Quick Ratio'] = (data['assetsc'] - data['inventory']) / data['liabilitiesc']
 
-    # Efficiency
-    metrics['WC Turn'] = data['revenue'] / (data['assetsc'] - data['liabilitiesc'])
+    # Efficiency (with validation for new turnover ratios)
+    safe_working_capital = (data['assetsc'] - data['liabilitiesc']).replace(0, np.nan)
+    
+    metrics['WC Turn'] = safe_revenue / safe_working_capital
     metrics['Asset Turn'] = data['assetturnover']
+    metrics['Recv Turn'] = safe_revenue / safe_receivables  # Revenue / Receivables
+    metrics['Inv Turn'] = safe_cor / safe_inventory  # COGS / Inventory
 
     # Profitability
     metrics['ROA'] = data['roa']
     metrics['ROE'] = data['roe']
     metrics['ROIC'] = data['roic']
 
+    # Create DataFrame and apply data cleaning
     metrics_df = pd.DataFrame(metrics)
+    
+    # Replace infinite values and extreme outliers
     metrics_df = metrics_df.replace([np.inf, -np.inf], np.nan)
+
+    # Cap extreme values for display purposes (optional but recommended)
+    for col in ['DSO', 'DIO', 'DPO', 'Cash Cycle']:
+        if col in metrics_df.columns:
+            # Cap at 999 days for display (negative values allowed for Cash Cycle)
+            if col == 'Cash Cycle':
+                metrics_df[col] = metrics_df[col].clip(lower=-999, upper=999)
+            else:
+                metrics_df[col] = metrics_df[col].clip(upper=999)
+
+    # Cap turnover ratios to reasonable ranges
+    for col in ['Recv Turn', 'Inv Turn', 'WC Turn']:
+        if col in metrics_df.columns:
+            metrics_df[col] = metrics_df[col].clip(upper=100)  # Cap at 100x turnover
+
+    # Cap NI to CFO ratio to reasonable range
+    if 'NI to CFO' in metrics_df.columns:
+        metrics_df['NI to CFO'] = metrics_df['NI to CFO'].clip(lower=-10, upper=10)
+
     metrics_df.index = data['year']
 
     wacc = compute_wacc(
@@ -331,13 +401,29 @@ def write_to_excel(sheet, metrics, wacc, start_row=4, start_col=5):
                     cell = sheet.cells(current_row, col_num)
                     cell.value = value
                     
-                    # Apply formatting based on metric type
-                    if 'Marg' in metric_name or 'Yield' in metric_name or 'CAGR' in metric_name:
+                    percentage_metrics = [
+                        'GP Marg', 'EBITDA Marg', 'Net Marg', 'Op Marg', 'FCF Marg',
+                        'Div Yield', 'BB Yield', 'Rev 3YCAGR',
+                        'R&D/Rev', 'SG&A/Rev', 'SBC/Rev',
+                        'ROA', 'ROE', 'ROIC'
+                    ]
+                    
+                    decimal_metrics = [
+                        'Curr Ratio', 'Quick Ratio', 'D/E', 'Debt/EBITDA', 'Cash Ratio', 'Cash/Debt',
+                        'Int Cov', 'WC Turn', 'Asset Turn', 'Recv Turn', 'Inv Turn', 'EPS', 'NI to CFO',
+                        'TEV/EBITDA', 'TEV/Rev', 'TEV/FCF', 'P/E', 'P/B'
+                    ]
+                    
+                    whole_number_metrics = ['DSO', 'DIO', 'DPO', 'Cash Cycle', 'Ins Buys']
+                    
+                    # Apply formatting based on explicit categories
+                    if metric_name in percentage_metrics:
                         cell.api.NumberFormat = "0%"
-                    elif 'Ratio' in metric_name or '/' in metric_name or \
-                        metric_name in ['ROA', 'ROE', 'ROIC', 'WC Turn', 'Asset Turn', 'EPS']:
+                    elif metric_name in decimal_metrics:
                         cell.api.NumberFormat = "0.00"
-                    elif isinstance(value, (int, float)):
+                    elif metric_name in whole_number_metrics:
+                        cell.api.NumberFormat = "0"
+                    elif isinstance(value, (int, float)) and pd.notna(value):
                         cell.api.NumberFormat = "#,##0"
                     
                 current_row += 1
@@ -382,14 +468,14 @@ def write_to_excel(sheet, metrics, wacc, start_row=4, start_col=5):
 
 
 def api_test():
-    data, wacc = grab_time_series_data('BABA')
+    data, wacc = grab_fundamental_data('BABA')
     print(data)
     print(f"WACC: {wacc:.2%}")
 
 def main():
     _ = sys.argv[1] # spreadsheet path
     ticker = sys.argv[2]
-    metrics, wacc = grab_time_series_data(ticker)
+    metrics, wacc = grab_fundamental_data(ticker)
 
     wb = xw.books.active
     sheet = wb.sheets.active

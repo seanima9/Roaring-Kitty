@@ -26,6 +26,23 @@
       }
     },
     {
+      "name": "Operating Expense Detail",
+      "metrics": {
+        "R&D": "Research & Development Expenses",
+        "SG&A": "Selling, General & Administrative Expenses",
+        "D&A": "Depreciation & Amortization",
+        "SBC": "Stock-Based Compensation Expense"
+      }
+    },
+    {
+      "name": "Operating Expense Ratios",
+      "metrics": {
+        "R&D/Rev": "R&D Expenses as % of Revenue",
+        "SG&A/Rev": "SG&A Expenses as % of Revenue",
+        "SBC/Rev": "Stock-Based Compensation as % of Revenue"
+      }
+    },
+    {
       "name": "Cash Flow",
       "metrics": {
         "CFO": "Operating Cash Flow, Net Income + D&A (Non-Cash Expenses) + Changes in Working Capital (Cash Basis)",
@@ -33,6 +50,14 @@
         "Op Exp": "Operating Expenses",
         "CapEx": "Capital Expenditures",
         "Int Exp": "Interest Paid on Debt"
+      }
+    },
+    {
+      "name": "Cash Flow Analysis",
+      "metrics": {
+        "NI to CFO": "Operating Cash Flow / Net Income - Measures cash conversion quality",
+        "SBC Add-back": "Stock-Based Compensation added back in CFO calculation",
+        "WC Change": "Change in Working Capital (Current Assets - Current Liabilities)"
       }
     },
     {
@@ -66,6 +91,26 @@
       }
     },
     {
+      "name": "Asset Quality",
+      "metrics": {
+        "Receivables": "Accounts Receivable",
+        "Inventory": "Total Inventory",
+        "PPE Net": "Property, Plant & Equipment (Net of Depreciation)",
+        "Intangibles": "Intangible Assets (Goodwill, Patents, etc.)",
+        "Payables": "Accounts Payable",
+        "Def Revenue": "Deferred Revenue (Unearned Revenue)"
+      }
+    },
+    {
+      "name": "Working Capital",
+      "metrics": {
+        "DSO": "Days Sales Outstanding - Average days to collect receivables",
+        "DIO": "Days Inventory Outstanding - Average days inventory held",
+        "DPO": "Days Payable Outstanding - Average days to pay suppliers",
+        "Cash Cycle": "DSO + DIO - DPO, Net cash conversion cycle in days"
+      }
+    },
+    {
       "name": "Solvency",
       "metrics": {
         "D/E": "Total Debt / Shareholder Equity",
@@ -86,7 +131,9 @@
       "name": "Efficiency",
       "metrics": {
         "WC Turn": "Revenue / (Current Assets - Current Liabilities)",
-        "Asset Turn": "Revenue / Total Assets"
+        "Asset Turn": "Revenue / Total Assets",
+        "Recv Turn": "Revenue / Average Accounts Receivable",
+        "Inv Turn": "Cost of Revenue / Average Inventory"
       }
     },
     {
